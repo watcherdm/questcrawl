@@ -1,0 +1,511 @@
+<div class="questcrawl">
+    <img class="letterhead" src="https://questcrawl.com/wp-content/uploads/2022/08/title.png"/>
+    <input type="hidden" class="days" name="attr_days" value="0"/>
+    <input type="hidden" class="sheet-mode" name="attr_mode" value="create"/>
+    <input type="hidden" name="attr_max_supplies" value="20"/>
+    <input type="hidden" name="attr_max_injuries" value="5"/>
+    <input type="hidden" name="attr_max_treasure" value="6"/>
+    <input type="hidden" name="attr_supplies" value="20"/>
+    <input type="hidden" name="attr_injuries" value="0"/>
+    <input type="hidden" name="attr_treasure" value="1">
+    <div class="character-creator">
+        <div class="cell"><span>Name:</span><input type="text" name="attr_character_name"></div>
+        <div class="cell">
+            <span>Suit / Terrain:</span>
+            <input type="hidden" class="sheet-suit-button-toggle" name="attr_first_suit"/>
+            <input type="hidden" class="sheet-suit-button-toggle-2" name="attr_second_suit"/>
+            <button class="suit-selector heart" name="act_heart" type="action"><span style="color:red;">♥</span></button> Hills
+            <button class="suit-selector diamond" name="act_diamond" type="action"><span style="color:red;">♦</span></button> Deserts
+            <button class="suit-selector spade" name="act_spade" type="action"><span>♠</span></button> Swamps
+            <button class="suit-selector club" name="act_club" type="action"><span>♣</span></button> Cedars
+        </div>
+        <div class="cell"><span>Quest:</span><textarea name="attr_quest"></textarea></div>
+        <div class="cell">
+            <button name="act_create" class="btn" type="action">Save</button>
+        </div>    
+    </div>
+    
+    <div class="character">
+        <div class="top">
+            <div class="col">
+                <img  name="attr_character_avatar"/>
+            </div>
+            <div class="col col-large">
+                <input type="hidden" class="sheet-level-up-toggle" name="attr_max_injuries" value="5"/>
+                <input type="hidden" class="sheet-complete-quest-toggle" name="attr_level" value="0"/>
+                <button class="btn level-up-btn" type="action" name="act_level_up">Level Up</button>
+                <button class="btn complete-quest-btn" type="action" name="act_complete_quest">Complete Quest</button>
+                <button class="btn" type="action" name="act_finish">Finish Turn (<input type="number" name="attr_CurrentSupplyCost" value="(1+@{injuries})" disabled="true"/>)</button>
+                <div class="cell">
+                    <span>Name:</span>
+                    <span type="text" name="attr_character_name"></span>
+                </div>
+                <div class="cell">
+                    <span>Suit:</span>
+                    <input type="hidden" class="sheet-first-suit" name="attr_first_suit"/>
+                    <input type="hidden" class="sheet-second-suit" name="attr_second_suit"/>
+                    <span class="show-heart"><span style="color:red;">♥</span> Hills</span>
+                    <span class="show-diamond"><span style="color:red;">♦</span> Deserts</span>
+                    <span class="show-spade"><span>♠</span> Swamps</span>
+                    <span class="show-club"><span>♣</span> Cedars</span>
+                </div>
+                <div class="cell">
+                    <span>Quest:</span>
+                    <span name="attr_quest"></span>
+                </div>
+                <div class="cell">
+                    <span>Supplies:</span>
+                    <span name="attr_supplies" class="text-right"></span> / <span name="attr_max_supplies"></span>
+                    <button type="action" name="act_remove_supply" class="btn"> - </button>
+                    <button type="action" name="act_add_supply" class="btn"> + </button>
+                </div>
+                <div class="cell">
+                    <span>Injuries:</span>
+                    <span name="attr_injuries" class="text-right"></span> / <span name="attr_max_injuries"></span>                    
+                    <button type="action" name="act_remove_injury" class="btn"> - </button>
+                    <button type="action" name="act_add_injury" class="btn"> + </button>
+                </div>
+                <div class="cell">
+                    <span>Treasure:</span>
+                    <span name="attr_treasure" class="text-right"></span> / <span name="attr_max_treasure"></span>
+                    <button type="action" name="act_remove_treasure" class="btn">-</button>
+                    <button type="action" name="act_add_treasure" class="btn">+</button>
+                </div>
+            </div>
+        </div>
+        <div class="sheet-repeating-items">
+            <input class="sheet-inventory-current" type="hidden" name="attr_inventory" value="0"/>
+            <input class="sheet-max-inventory" type="hidden" name="attr_max_inventory" value="5"/>
+            <div class="text-center">Inventory Slots Used: <span name="attr_inventory"></span> / <span name="attr_max_inventory"></span></div>            
+            <fieldset class="repeating_inventory">
+                <span class="sheet-item-counter"></span>
+                <div class="slot">
+                    <select name="attr_item">
+                        <option value="---">-----Select Item-----</option>
+                        <option value="compass">Compass</option>
+                        <option value="mountaineering-gear">Mountaineering Gear</option>
+                        <option value="survival-kit">Survival Kit</option>
+                        <option value="map">Map</option>
+                        <option value="healing-herb">Healing Herb</option>
+                        <option value="rabbits-foot">Rabbit's Foot</option>
+                        <option value="magic-sword">Magic Sword</option>
+                        <option value="enchanted-shield">Enchanted Shield</option>
+                        <option value="elven-cloak">Elven Cloak</option>
+                        <option value="bottomless-bag">Bottomless Bag</option>
+                        <option value="book-of-spells">Book of Spells</option>
+                        <option value="holy-rod">Holy Rod</option>
+                        <option value="dwarven-tunnel-passport">Dwarven Tunnel Passport</option>
+                        <option value="ancient-knowledge">Ancient Knowledge</option>
+                        <option value="weapon-of-legend">Weapon of Legend</option>
+                        <option value="vault-key">Vault Key</option>
+                        <option value="orb-of-chaos">Orb of Chaos</option>
+                        <option value="pocket-pirate-ship">Pocket Pirate Ship</option>
+                    </select>
+                    <img class="img" name="attr_item_img"/>
+                    <div>
+                        <span class="name" name="attr_item_name"></span>
+                        <span class="effect" name="attr_item_effect"></span>
+                        <button type="action" class="btn" name="act_discarditem">Discard</button>
+                    </div>
+                </div>
+            </fieldset>    
+        </div>        
+
+    </div>
+
+    <div class="graveyard">
+        Here Lies <span name="attr_character_name"></span>. They adventured for <span name="attr_days"></span> days.
+        <fieldset class="repeating_history">
+            In <span name="attr_territory"></span> they <span name="attr_action"></span>.
+        </fieldset>
+        They leave behind <span name="attr_supplies"></span> supplies and <span name="attr_treasure"></span> treasure.
+        To their fellows they offer:
+        <fieldset class="repeating_inventory">
+            <div>
+                <span name="attr_item_name"></span>
+            </div>
+        </fieldset>
+        <button class="btn" type="action" name="act_resurrect">Resurrect!</button>
+    </div>
+</div>
+<script type="text/worker">
+    const items = {
+        "compass": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_fantasy_compass_on_a_wooden_table_torche_lit_and_glea_aa851deb-9d34-42dc-b8ae-97831b480c0c.png",
+            name: "Compass",
+            description: "Bonus on Hard Lands. A lifesaver for small Parties."
+        },
+        "mountaineering-gear": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_mountaineering_gear_dwarf_made._75336b64-0b69-43db-8913-5a8cde6a3afb.png",
+            name: "Mountaineering Gear",
+            description: "Bonus on Mountains."
+        },
+        "survival-kit": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_survival_kit_fantasy_39a9ab0f-666b-494d-95d1-214facd45f85.png",
+            name: "Survival Kit",
+            description: "Bonus on Crises."
+        },
+        "map": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_treasure_map_on_parchment_f58680e5-7efd-414c-883f-553bf2d05a15.png",
+            name: "Map",
+            description: "Discard to roll a die. Flip that many distant Territories that are connected."
+        },
+        "healing-herb": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_healing_herbs_bundle_7158ff24-d8b8-41ea-b7cd-58b9523cd9c6.png",
+            name: "Healing Herb",
+            description: "Discard to remove 1 Injury."
+        },
+        "rabbits-foot": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_rabbit_foot_amulet_5e2e7cbb-a57b-49c6-a812-29481ecbc7f5.png",
+            name: "Rabbit's Foot",
+            description: "Discard to reroll a die."
+        },
+        "magic-sword": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_a_magical_long_sword_91157dc7-9259-4aaa-a148-7d5e33e20eb5.png",
+            name: "Magic Sword",
+            description: "Bonus against Terrible Beasties and Factions. Name your blade!"
+        },
+        "enchanted-shield": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_enchanted_shield_b6acd85e-6f61-4d9d-9b8b-97eda4635d51.png",
+            name: "Enchanted Shield",
+            description: "When adding Injuries from Terrible Beasties, Megabeasts, or Factions, roll a die. On a 4, 5, or 6, prevent 1 Injury."
+        },
+        "elven-cloak": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_elven_cloak_da20729f-0d43-41b2-8a00-92760b36e2e9.png",
+            name: "Elven Cloak",
+            description: "Bonus against Megabeasts."
+        },
+        "bottomless-bag": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_bottomless_bag_magical_bag_of_holding_402157bb-adfe-489b-861e-7fe2febfecd8.png",
+            name: "Bottomless Bag",
+            description: "Character has nine Inventory Slots and can carry up to 9 Treasures and 30 Supplies."
+        },
+        "book-of-spells": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_spellbook_0d1e3e19-9094-47e1-9a41-155c6216e698.png",
+            name: "Book of Spells",
+            description: "Add 1 Injury to give another Character a Bonus. Use this before they roll, once per turn. Describe your spell."
+        },
+        "holy-rod": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_holy_rod_66c3df33-5404-41ea-a162-58e5b0662d0a.png",
+            name: "Holy Rod",
+            description: "Bonus on any Territory connected to a Quest. Add 1 Injury to remove 1 Injury from another Character."
+        },
+        "dwarven-tunnel-passport": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/11/watcherdm_dwarven_tunnel_passport_183f402e-c33f-4d7f-a82f-600979e84d61.png",
+            name: "Dwarven Tunnel Passport",
+            description: "The Party may move from Mountain to Mountain across any distance."
+        },
+        "ancient-knowledge": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_ancient_knowledge_of_the_elves_001c78f5-1b1b-40bf-98b0-2a54bce1cc28.png",
+            name: "Ancient Knowledge",
+            description: "The Party gains a Bonus on Good Lands; rolling doubles on Good Lands finds Healing Herbs."
+        },
+        "weapon-of-legend": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_weapon_of_legend_e4a44098-28c3-4587-90dd-25e82ca24ff1.png",
+            name: "Weapon of Legend",
+            description: "Bonus against Terrible Beasties, Factions, and the End Beast."
+        },
+        "vault-key": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/11/watcherdm_vault_key_b0d4749e-23d9-4c49-98bb-8b021a6e1caa.png",
+            name: "Vault Key",
+            description: "Opens the Vault."
+        },
+        "orb-of-chaos": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_orb_ofchaos_2aa03cf6-55e7-4502-a6f5-1f442aa0faf8.png",
+            name: "Orb of Chaos",
+            description: "Discard to shuffle and redeal the whole Island."
+        },
+        "pocket-pirate-ship": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_a_pirate_ship_sailing_in_a_storm_inside_a_windowed_fl_e33511a9-541e-436f-9b46-a1f934059b2b.png",
+            name: "Pocket Pirate Ship",
+            description: "The Party may skip across one-card gaps in the Island while moving."
+        }
+    }
+
+    const pickSuit = (suit) => {
+        return ({first_suit, second_suit, level}) => {
+            if (level === "0") {
+                // we creating the character
+                setAttrs({
+                    "first_suit": suit
+                })
+            } else if (level === 2 && second_suit === "" && first_suit !== suit) {
+                setAttrs({
+                    "second_suit": suit
+                })
+            } else {
+                console.log(`unable to set ${suit} invalid state. LVL: ${level}, FS: ${first_suit}, SS: ${second_suit}`)
+            }
+        }
+    }
+
+    const add_supply = () => {
+        getAttrs(["supplies", "max_supplies"], ({supplies, max_supplies}) => {
+            if (parseInt(supplies, 10) + 1 <= parseInt(max_supplies,10)) {
+                setAttrs({
+                    supplies: parseInt(supplies, 10) + 1
+                })
+            } else {
+                setAttrs({
+                    supplies: parseInt(max_supplies, 10)
+                })
+            }
+        })
+    }
+
+    const remove_supply = () => {
+        getAttrs(["supplies", "max_supplies"], ({supplies, max_supplies}) => {
+            if (parseInt(supplies, 10) - 1 >= 0) {
+                setAttrs({
+                    supplies: parseInt(supplies, 10) - 1
+                })
+            } else {
+                setAttrs({
+                    supplies: 0
+                })
+            }
+        })
+    }
+
+    const resurrect = () => {
+        setAttrs({
+            supplies: 0,
+            injuries: 0,
+            treasure: 0,
+            max_inventory: 5,
+            mode: "play"
+        })
+    }
+
+    const toInt = (x) => parseInt(x, 10)
+
+    on("clicked:resurrect", resurrect)
+
+    on("clicked:level_up", () => {
+        setAttrs({
+            "max_injuries": 6
+        })
+    })
+
+    on("clicked:add_injury", () => {
+        getAttrs(["injuries", "max_injuries"], ({injuries, max_injuries}) => {
+            if (parseInt(injuries, 10) + 1 <= parseInt(max_injuries,10)) {
+                setAttrs({
+                    injuries: parseInt(injuries, 10) + 1
+                })
+            }
+        })
+
+    })
+    on("clicked:remove_injury", () => {
+        getAttrs(["injuries", "max_injuries"], ({injuries, max_injuries}) => {
+            if (parseInt(injuries, 10) - 1 >= 0) {
+                setAttrs({
+                    injuries: parseInt(injuries, 10) - 1
+                })
+            }
+        })
+
+    })
+
+    const add_treasure = () => {
+        getAttrs(["treasure", "max_treasure"], ({treasure, max_treasure}) => {
+            if (parseInt(treasure, 10) + 1 <= parseInt(max_treasure,10)) {
+                setAttrs({
+                    treasure: parseInt(treasure, 10) + 1
+                })
+            } else {
+                setAttrs({
+                    treasure: parseInt(max_treasure, 10)
+                })
+            }
+        })
+
+    }
+
+    const remove_treasure = () => {
+        getAttrs(["treasure", "max_treasure"], ({treasure, max_treasure}) => {
+            if (parseInt(treasure, 10) - 1 >= 0) {
+                setAttrs({
+                    treasure: parseInt(treasure, 10) - 1
+                })
+            } else {
+                setAttrs({
+                    treasure: parseInt(max_treasure, 10)
+                })
+            }
+        })
+    }
+
+    const clamp_inventory = () => {
+        const newAttrs = {}
+        getSectionIDs("inventory", (inventoryIds) => {
+            const itemIds = inventoryIds.map((x) => `repeating_inventory_${x}`)
+            getAttrs(["max_inventory"], ({max_inventory}) => {
+                if (toInt(max_inventory) < itemIds.length) {
+                    itemIds.forEach((i, x) => (x >= max_inventory) && removeRepeatingRow(i))
+                    setAttrs({
+                        inventory: max_inventory
+                    })
+                } else {
+                    setAttrs({
+                        inventory: itemIds.length
+                    })
+                }
+            })
+        })
+    }
+
+    const update_bag_space = () => {
+        getSectionIDs("inventory", (inventoryIds) => {
+            getAttrs(inventoryIds.map((i) => `repeating_inventory_${i}_item`), (items) => {
+                const hasBag = Object.values(items).some((i) => i === 'bottomless-bag')
+                if (hasBag) {
+                    setAttrs({
+                        'max_inventory': 9,
+                        'max_supplies': 30,
+                        'max_treasure': 9
+                    })        
+                } else {
+                    setAttrs({
+                        'max_inventory': 5,
+                        'max_supplies': 20,
+                        'max_treasure': 6
+                    })
+                }
+            })
+        })
+    }
+
+    const clamp_supplies = () => {
+        getAttrs(["supplies", "max_supplies"], ({supplies, max_supplies}) => {
+            if (toInt(supplies) > toInt(max_supplies)) {
+                setAttrs({
+                    supplies: max_supplies
+                })
+            } else if (toInt(supplies) < 0) {
+                setAttrs({
+                    supplies: 0
+                })
+            }
+        })
+    }
+
+    const clamp_treasure = () => {
+        getAttrs(["treasure", "max_treasure"], ({treasure, max_treasure}) => {
+            if (toInt(treasure) > toInt(max_treasure)) {
+                setAttrs({
+                    treasure: max_treasure
+                })
+            } else if (toInt(treasure) < 0) {
+                setAttrs({
+                    treasure: 0
+                })
+            }
+        })
+    }
+
+    on("clicked:add_supply", add_supply)
+    on("clicked:remove_supply", remove_supply)
+
+    on("clicked:add_treasure", add_treasure)
+    on("clicked:remove_treasure", remove_treasure)
+
+    const set_inventory_item = ({sourceAttribute}) => {
+        getAttrs([sourceAttribute], (result) => {
+            const item = result[sourceAttribute]
+            const toSet = {}
+            toSet[`${sourceAttribute}_img`] = items[item].img
+            toSet[`${sourceAttribute}_name`] = items[item].name
+            toSet[`${sourceAttribute}_effect`] = items[item].description
+            setAttrs(toSet)
+        })
+    }
+
+    on("change:max_supplies", clamp_supplies)
+    on("change:max_treasure", clamp_treasure)
+    on("change:max_inventory", clamp_inventory)
+
+    on("change:repeating_inventory", clamp_inventory)
+
+    on("change:repeating_inventory:item", set_inventory_item)
+    on("change:repeating_inventory:item", update_bag_space)
+
+    on("remove:repeating_inventory", clamp_inventory)
+
+    on("clicked:create", () => {
+        getAttrs(["first_suit", "second_suit", "level", "quest", "character_name"], ({first_suit, second_suit, level, quest, character_name}) => {
+            if (first_suit && quest && character_name && !second_suit && level == 0) {
+                setAttrs({
+                    "mode": "play",
+                    "level": 1
+                })
+            } else if (second_suit && character_name && level == 2) {
+                setAttrs({
+                    quest: `COMPLETE! ${quest}`,
+                    mode: "play"
+                })
+            } else {
+                console.log(`unable to create character, something is missing ${first_suit} ${quest} ${character_name}`)
+            }
+        })
+    })
+    on("clicked:heart", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("hearts"))
+    })
+    on("clicked:diamond", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("diamonds"))
+    })
+    on("clicked:spade", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("spades"))
+    })
+    on("clicked:club", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("clubs"))
+    })
+    on("clicked:finish", () => {
+        getAttrs(["injuries", "supplies", "max_injuries", "days"], ({injuries, supplies, max_injuries, days}) => {
+            const _injuries = parseInt(injuries, 10)
+            const _supplies = parseInt(supplies, 10)
+            const _max_injuries = parseInt(max_injuries, 10)
+            const cost = 1 + _injuries;
+            if (_supplies >= cost) {
+                setAttrs({
+                    "supplies": _supplies - cost,
+                    "days": parseInt(days, 10) + 1
+                })
+            } else if (_injuries + 1 <= max_injuries) {
+                setAttrs({
+                    "supplies": 0,
+                    "injuries": _injuries + 1,
+                    "days": parseInt(days, 10) + 1
+                })
+            } else {
+                setAttrs({
+                    status: "dead",
+                    mode: "graveyard"
+                })                
+            }
+        })
+    })
+    on("clicked:complete_quest", () => {
+        setAttrs({
+            level: 2,
+            mode:"create"
+        })
+    })
+    on("change:injuries", () => {
+        getAttrs(["level", "injuries"], ({level, injuries}) => {
+            if (4 + level <= injuries) {
+                setAttrs({
+                    status: "dead",
+                    mode: "graveyard"
+                })
+            }
+        })
+    })
+
+    on("clicked:repeating_inventory:discarditem", ({sourceAttribute}) => {
+        removeRepeatingRow(sourceAttribute.replace("_discarditem", ""))
+        clamp_inventory()
+    })
+</script>

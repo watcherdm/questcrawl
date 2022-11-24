@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css?family=Alegreya:ital,wght@0,400;0,700;0,900;1,400&display=swap');
+.letterhead {
+    display:block;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+h1 {
+    text-align: center;
+}
+
+.questcrawl {
+    font-family: 'Alegreya', serif;
+    font-size: 2em;
+    min-width: 800px;
+}
+
+.questcrawl input, .questcrawl textarea, button {
+    font-size: 1em;
+    border: 0;
+}
+
+.top {
+    margin: 2em;
+    display: flex;
+}
+
+.col {
+    height: 100%;
+    width: 100%;
+}
+
+.col + .col {
+    margin-left: 2%;
+}
+
+.col-large {
+    flex-grow: 2;
+}
+
+.inventory {
+    display: flex;
+}
+
+.slot {
+    display: inline-block;
+    flex: 1;
+    flex-direction: row;
+    margin: 1em;
+    max-width: 300px;
+    height: 130px;
+}
+
+.cell {
+    display: flex;
+}
+
+.cell span, .cell input {
+    flex: 1;
+}
+
+body.sheet-darkmode button,
+body.sheet-darkmode input,
+body.sheet-darkmode optgroup,
+body.sheet-darkmode select,
+body.sheet-darkmode textarea,
+body.sheet-darkmode .charsheet,
+body.sheet-darkmode h1 {
+	color: #eee;
+	background-color: #222;
+}
+body.sheet-darkmode .btn,
+body.sheet-darkmode .btn.btn-default {
+	color: #c8c3bc;
+	text-shadow: rgba(24,26,27,.75) 0px 1px 1px;
+	background-color: #1e2021;
+	background-image: linear-gradient(#181a1b, #26292b);
+	border-color: #3e4446 #3e4446 #43494c;
+	box-shadow: rgba(24,26,27,.2) 0px 1px 0px inset,rgba(0,0,0,.05) 0px 1px 2px
+}
+
+.questcrawl .character-creator,
+.questcrawl .character,
+.questcrawl .graveyard {
+    display: none;
+}
+
+.questcrawl .sheet-mode[value="create"] ~ div.character-creator,
+.questcrawl .sheet-mode[value="play"] ~ div.character,
+.questcrawl .sheet-mode[value="graveyard"] ~ div.graveyard {
+    display: block;
+}
+
+.questcrawl .suit-selector {
+    display: inline-block;
+    font-size: 2em;
+    height: 35px;
+    width: 35px;
+    padding: 6px;
+}
+
+.character-creator .sheet-suit-button-toggle[value="hearts"] ~ button.heart,
+.character-creator .sheet-suit-button-toggle[value="diamonds"] ~ button.diamond,
+.character-creator .sheet-suit-button-toggle[value="spades"] ~ button.spade,
+.character-creator .sheet-suit-button-toggle[value="clubs"] ~ button.club {
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.character-creator .sheet-suit-button-toggle-2[value="hearts"] ~ button.heart,
+.character-creator .sheet-suit-button-toggle-2[value="diamonds"] ~ button.diamond,
+.character-creator .sheet-suit-button-toggle-2[value="spades"] ~ button.spade,
+.character-creator .sheet-suit-button-toggle-2[value="clubs"] ~ button.club {
+    border: 2px solid rgb(255, 0, 0);
+    border-radius: 50%;
+}
+
+.slot select {
+    display: block;
+}
+
+.slot .img {
+    display: inline-block;
+    position: absolute;
+    max-width: 50px;
+}
+
+.slot div {
+    margin-left: 60px;
+    font-size: 0.5em;
+}
+
+.slot div span {
+    display: block;
+}
+
+.slot div .name {
+    font-size: 1.5em;
+}
+
+.repcontainer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+}
+
+.repitem {
+    width: 30%;
+    margin-bottom: 2%;
+}
+
+.show-heart, .show-diamond, .show-spade, .show-club {
+    text-align: center;
+    display: none;
+}
+
+.character .sheet-first-suit[value="hearts"] ~ .show-heart, 
+.character .sheet-first-suit[value="diamonds"] ~ .show-diamond,
+.character .sheet-first-suit[value="spades"] ~ .show-spade,
+.character .sheet-first-suit[value="clubs"] ~ .show-club,
+.character .sheet-second-suit[value="hearts"] ~ .show-heart,
+.character .sheet-second-suit[value="diamonds"] ~ .show-diamond,
+.character .sheet-second-suit[value="spades"] ~ .show-spade,
+.character .sheet-second-suit[value="clubs"] ~ .show-club {
+    display: inline-block;
+}
+
+.character .sheet-complete-quest-toggle[value="2"] ~ .complete-quest-btn {
+    display: none;
+}
+
+.character .sheet-level-up-toggle[value="6"] ~ .level-up-btn {
+    display: none;
+}
