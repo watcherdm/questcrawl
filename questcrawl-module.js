@@ -15,64 +15,43 @@ const rules = {
         </p>
         <p>Failing this <b>Party Challenge</b> adds 1 Injury. Success adds 1 Treasure and rolls a die. Add one random Common Item on 3 or 4, 1 extra Treasure on 5, and one random Magic Item on 6.`,
     hardlands: `<h2>7’s and 8’s - Hard Lands</h2>
-<p>The landscape is dizzyingly dense - or perhaps vast and featureless. Either way, it’s easy to get lost here. Succeed this <b>Champion Challenge</b> to move next turn. Failure prevents movement; retake the Challenge next turn instead.</p>`,
+        <p>The landscape is dizzyingly dense - or perhaps vast and featureless. Either way, it’s easy to get lost here. Succeed this <b>Champion Challenge</b> to move next turn. Failure prevents movement; retake the Challenge next turn instead.</p>`,
     crises: `<h2>9’s - Crises</h2>
-        <p>♣ Forest Fires ♦ Sandstorms ❤ Mudslides ♠ Sinkholes<br/>
+        <p>♣ Forest Fires ♦ Sandstorms ♥ ️Mudslides ♠ Sinkholes<br/>
         Wherever you are, something can go terribly wrong. When it does, only those who know the Terrain Type best can lead their friends to safety. <b>Champion Challenge</b> of 9. Failure adds 1 Injury to each Character. Only face-down Crises challenge the players; after the first time it’s played it becomes a Blank Territory. Crises flipped by Territory or Item effects are returned face-down.</p>`,
-    megabeasts: `## 10’s - Megabeast
-
-Here be Dragons - or Gigantic Laser-Eyed Crocodile-Moth-Gods. Your choice. Describe the Megabeast as if it were a Terrible Beastie, letting each player go twice.
-
-Failing this **Champion Challenge** of 10 adds 2 Injuries to each Character. Success allows the Party to escape uninjured if this card was flipped face-up this turn. Otherwise, the Party steals 2
-Treasure, one Magic Item, and one **Weapon of Legend**. Describe the weapon. These Items may only be stolen once per game.
-`,
-    mountains: `## Aces - Mountains
-
-Pass a **Champion Challenge** of 5 or return to the Territory you came from. Success flips all adjacent Territories. Suits don’t give Bonuses on Mountains.
-
-When the A♠ Mountain is first climbed, add one random Magic Item.
-`,
-    wonders: `## Jacks - Wonders
-
-**J**♣ **- Oracle of the Henge** - Trade 1 Treasure to flip three distant face-down Territories. Trade 3 Treasures to remove the Party’s Injuries.
-
-**J**♦ **- The Vault** - If the Party has the **Vault Key**, Characters add 9 Treasure each. Once looted, the Vault becomes a Blank Territory.
-
-**J**❤ **- Garden of Plenty** - Characters add 20 Supplies each. Roll a die. On a 1 or 2, the Garden becomes a Blank Territory.
-
-**J**♠ **- Twisting Pyramid** - Trade 1 Treasure to rotate the surrounding Territories either clockwise or counterclockwise.
-`,
-    factions: `## Kings - Factions
-
-Players may choose to battle Factions. Factions fight as Challenge 8 Terrible Beasties. At least half of the party (rounded up) must succeed to defeat a Faction. Defeated Factions become Blank Territories. Battled but undefeated Factions always battle. Defeat a Faction to add 5 Treasures and 10 Supplies each.
-
-**K**♣ **- Elves** - Trade 1 Treasure for 12 Supplies or 3 Treasures for an **Elven Cloak**. If you’ve defeated the **Dwarves**, gain **Ancient Knowledge**.
-
-**K**♦ **- City of Thieves** - Upon entering a connected Territory, roll a **Party Challenge** of 3. Failure removes 1 Treasure; you’ve been robbed! Trade 4 Treasures for any Magic Item or 9 Treasures for the **Pocket Pirate Ship**.
-
-**K**❤ **- Dwarves** - Counts as a Mountain. Trade 1 Treasure to move to a face-up Mountain or 3 Treasures for an **Enchanted Shield**. If you’ve defeated the **Elves**, gain the **Dwarven Tunnel Passport**.
-
-**K**♠ **- Unearthed Evil** - You’ve unleashed an ancient evil! Connected Territories 2-8 fight as Terrible Beasties until the Party defeats the Unearthed Evil.
-
-The Unearthed Evil always battles; there is no choice. Its Challenge is 12, minus 1 for each time the Twisting Pyramid has been used (minimum 9). Defeating the Unearthed Evil adds one
-random Magic Item, the **Vault Key**, and the **Orb of Chaos**.
-`,
-    quests: `### Queens - Quests
-
-This is what your Character has been looking for. How do they react? Once they find it, are they done? Or do they owe the Party one last score?
-
-- When a Character reaches the Quest that matches their Suit, they add a second Suit. Do this only once.
-- If a Character other than yours has found their Quest, your Character can have 6 Injuries before they are ☠ Dead.
-
-When all Quests have been achieved, the starting Town becomes the End Beast. Describe it as a Terrible Beastie, adding three details each. Treat it as a Suitless **Faction**, with a Challenge of 10. Only Characters with a **Weapon of Legend** can succeed against the End Beast. Once you’ve entered battle with the End Beast, the Party no longer moves. You must fight or die. Defeat it to win the game!
-`
-};
+    megabeasts: `<h2>10’s - Megabeast<h2>
+        <p>Here be Dragons - or Gigantic Laser-Eyed Crocodile-Moth-Gods. Your choice. Describe the Megabeast as if it were a Terrible Beastie, letting each player go twice.</p>
+        <p>Failing this <b>Champion Challenge</b> of 10 adds 2 Injuries to each Character. Success allows the Party to escape uninjured if this card was flipped face-up this turn. Otherwise, the Party steals 2 Treasure, one Magic Item, and one **Weapon of Legend**. Describe the weapon. These Items may only be stolen once per game.</p>`,
+    mountains: `<h2>Aces - Mountains</h2>
+        <p>Pass a <b>Champion Challenge</b> of 5 or return to the Territory you came from. Success flips all adjacent Territories. Suits don’t give Bonuses on Mountains.</p>
+        <p>When the A♠ Mountain is first climbed, add one random Magic Item.</p>`,
+    wonders: `<h2>Jacks - Wonders</h2>
+        <p><b>J♣ - Oracle of the Henge</b> - Trade 1 Treasure to flip three distant face-down Territories. Trade 3 Treasures to remove the Party’s Injuries.</p>
+        <p><b>J♦ - The Vault</b> - If the Party has the <b>Vault Key</b>, Characters add 9 Treasure each. Once looted, the Vault becomes a Blank Territory.</p>
+        <p><b>J♥ - Garden of Plenty</b> - Characters add 20 Supplies each. Roll a die. On a 1 or 2, the Garden becomes a Blank Territory.</p>
+        <p><b>J♠ - Twisting Pyramid</b> - Trade 1 Treasure to rotate the surrounding Territories either clockwise or counterclockwise.</p>`,
+    factions: `<h2>Kings - Factions</h2>
+        <p>Players may choose to battle Factions. Factions fight as Challenge 8 Terrible Beasties. At least half of the party (rounded up) must succeed to defeat a Faction. Defeated Factions become Blank Territories. Battled but undefeated Factions always battle. Defeat a Faction to add 5 Treasures and 10 Supplies each.</p>
+        <p><b>K♣ - Elves</b> - Trade 1 Treasure for 12 Supplies or 3 Treasures for an <b>Elven Cloak</b>. If you’ve defeated the <b>Dwarves</b>, gain <b>Ancient Knowledge</b>.</p>
+        <p><b>K♦ - City of Thieves</b> - Upon entering a connected Territory, roll a <b>Party Challenge</b> of 3. Failure removes 1 Treasure; you’ve been robbed! Trade 4 Treasures for any Magic Item or 9 Treasures for the <b>Pocket Pirate Ship</b>.</p>
+        <p><b>K♥ - Dwarves</b> - Counts as a Mountain. Trade 1 Treasure to move to a face-up Mountain or 3 Treasures for an <b>Enchanted Shield</b>. If you’ve defeated the <b>Elves</b>, gain the <b>Dwarven Tunnel Passport</b>.</p>
+        <p><b>K♠ - Unearthed Evil</b> - You’ve unleashed an ancient evil! Connected Territories 2-8 fight as Terrible Beasties until the Party defeats the Unearthed Evil.</p>
+        <p>The Unearthed Evil always battles; there is no choice. Its Challenge is 12, minus 1 for each time the Twisting Pyramid has been used (minimum 9). Defeating the Unearthed Evil adds one random Magic Item, the **Vault Key**, and the <b>Orb of Chaos</b>.</p>`,
+    quests: `<h2>Queens - Quests</h2>
+        <p>This is what your Character has been looking for. How do they react? Once they find it, are they done? Or do they owe the Party one last score?</p>
+        <ul>
+            <li>When a Character reaches the Quest that matches their Suit, they add a second Suit. Do this only once.</li>
+            <li>If a Character other than yours has found their Quest, your Character can have 6 Injuries before they are ☠ Dead.</li>
+        </ul>
+        <p>When all Quests have been achieved, the starting Town becomes the End Beast. Describe it as a Terrible Beastie, adding three details each. Treat it as a Suitless **Faction**, with a Challenge of 10. Only Characters with a **Weapon of Legend** can succeed against the End Beast. Once you’ve entered battle with the End Beast, the Party no longer moves. You must fight or die. Defeat it to win the game!</p>`
+    };
 
 
 on("ready", () => {
     let rng = Math.random;
     const cardSize = 70;
     const offset = 1050;
+
     function cyrb128(str) {
         let h1 = 1779033703, h2 = 3144134277,
             h3 = 1013904242, h4 = 2773480762;
@@ -115,21 +94,23 @@ on("ready", () => {
         "King": "factions"
     };
 
-    if (!state.QuestCrawl) {
-        state.QuestCrawl = {
-            version: 2.1,
-            config: {
-                mode: 'original',
-                deck: 'QuestCrawl3',
-            },
-            grid: {},
-            day: 0,
-            players: [],
-            characters: [],
-            
-            count: 0
+    function resetConfig() {
+        if (!state.QuestCrawl) {
+            state.QuestCrawl = {
+                version: 2.1,
+                config: {
+                    mode: 'original'
+                },
+                grid: {},
+                day: 0,
+                players: [],
+                characters: [],
+                count: 0
+            }
         }
     }
+
+    resetConfig()
     
     function resetRng() {
         if (state.QuestCrawl.config.seed) {
@@ -141,10 +122,6 @@ on("ready", () => {
         }
     }
 
-    on("add:player", (player) => {
-        log(player)
-    });
-    
     function endTurn() {
         state.QuestCrawl.grid = grid.toJSON()
     }
@@ -178,7 +155,7 @@ on("ready", () => {
         log("we could all certainly use a little help!")
     }
 
-    const sendError = (who, msg) => sendChat('',`/w "${who}" ${f.msg(msg)}`);
+    const sendError = (who, msg) => sendChat('QuestCrawl',`/w "${who}" ${msg}`);
 
 
     function Grid() {
@@ -295,6 +272,10 @@ on("ready", () => {
     }
 
     function detectGameState() {
+        if (!state.QuestCrawl.config.deck) {
+            sendChat('QuestCrawl', 'Unable to detect running game state, invalid configuration')
+            return
+        }
         const currentDeck = findObjs({type: 'deck', name: state.QuestCrawl.config.deck})[0]
         const deckid = currentDeck.id
         if (!grid.get({x:0,y:0}).id) {
@@ -314,6 +295,22 @@ on("ready", () => {
 
     detectGameState()
 
+    function getCardsFromDeck(deckid) {
+        return findObjs({type: 'card', deckid}).sort((a, b) => {
+            const aname = a.get('name');
+            const bname = b.get('name');
+            if (aname > bname) {
+                return 1
+            } else if (bname > aname) {
+                return -1
+            } else {
+                return 0
+            }
+        }).sort(() => {
+            return Math.floor(rng() * 2) - 1
+        }).map(x => x.id);
+    }
+
     on("chat:message", (msg) => {
         if ( 'api' !== msg.type || !/^!questcrawl\b/i.test(msg.content)) {
             return
@@ -327,8 +324,46 @@ on("ready", () => {
             .replace(/(\{\{(.*?)\}\})/g," $2 ")
             .split(/\s+--/);
 
+        if(args.find(n=>/^resetconfig(\b|$)/i.test(n))) {
+
+            sendError(who, `Resetting Mod to Factory Default`)
+            delete state.QuestCrawl
+            resetConfig()
+            return
+
+        }
+
+        if (state.QuestCrawl.config.deck) {
+            sendError(who, `
+                You must set a deck for questcrawl before using this mod
+                !questcrawl --config --deck <Name of Deck>
+            `)
+            return;
+        }
+
         const currentDeck = findObjs({type: 'deck', name: state.QuestCrawl.config.deck})[0]
         const deckid = currentDeck.id
+
+        if(args.find(n=>/^reset(\b|$)/i.test(n))) {
+
+            setTimeout(() => {
+                recallCards(deckid)
+                setTimeout(() => {
+                    shuffleDeck(deckid)
+                    setTimeout(() => {
+                        recallCards(deckid)
+                        setTimeout(() => {
+                            shuffleDeck(deckid)
+                            log("cards reset")
+                            grid = new Grid()
+                            placed = []
+                            open = []
+                        }, 100)
+                    }, 100)
+                }, 100)
+            }, 100)
+            return;
+        }
         
         if(args.find(n=>/^start(\b|$)/i.test(n))) {
             const players = findObjs({type: 'player'})
@@ -359,25 +394,6 @@ on("ready", () => {
             return
         }
         
-        if(args.find(n=>/^reset(\b|$)/i.test(n))) {
-            setTimeout(() => {
-                recallCards(deckid)
-                setTimeout(() => {
-                    shuffleDeck(deckid)
-                    setTimeout(() => {
-                        recallCards(deckid)
-                        setTimeout(() => {
-                            shuffleDeck(deckid)
-                            log("cards reset")
-                            grid = new Grid()
-                            placed = []
-                            open = []
-                        }, 100)
-                    }, 100)
-                }, 100)
-            }, 100)
-            return;
-        }
 
         if(args.find(n=>/^help(\b|$)/i.test(n))){
             showHelp(who);
@@ -412,17 +428,21 @@ on("ready", () => {
             }, {})
             log(`Generate Island called with params ${JSON.stringify(params)}`)
 
+            if (params.static) {
+                shuffleDeck(deckid, true, getCardsFromDeck(deckid))
+            }
+
             const startingTown = findObjs({type: 'card', deckid, name: "Red Joker"})[0]
             drawCard(deckid, startingTown.id)
             const scard = new QuestCrawlCard({x: 0, y: 0, cardid: startingTown.id})
-    
             scard.place(true)
             
             const l = findObjs({type: 'graphic', cardid: startingTown.id})[0]
             scard.id = l.id
-            const gaps = parseInt(params.gaps, 10) || 0
+            const gaps = parseInt(params.gaps, 10) || Math.floor(rng() * 6)
+            const show = (parseInt(params.show, 10) === 1)
             if (gaps > 27) {
-                sendError('Invalid Parameter --gaps must be less than 27')
+                sendError(who, 'Invalid Parameter --gaps must be less than 27')
                 return;
             }
             const gapSplit = Math.floor(54 / gaps)
@@ -447,7 +467,7 @@ on("ready", () => {
                         break;
                     }
                     const card = new QuestCrawlCard({x: target.x, y: target.y, cardid: cardid})
-                    card.place()
+                    card.place(show)
                     const l = findObjs({type: 'graphic', cardid: cardid})[0]
                     card.id = l.id
                 }
