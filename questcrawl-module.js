@@ -1,6 +1,26 @@
 "use strict";
 
 const rules = {
+    hometown: `<h2>Joker - Hometown</h2>
+        <p>When the Party enters a Town, roll one random Magic Item for trade. The Party can trade Treasure (see table). The second Town won’t trade until the Party defeats the <b>City of Thieves.</b></p>
+        <pre>
+| Cost | Service / Product |
+| --- | --- |
+| 1 | 10 Supplies |
+| 1 | any Common Item |
+| 1 | Remove 3 Injuries |
+| 3 | Random Magic Item |
+        </pre>`,
+    strangetown: `<h2>Joker - Hometown</h2>
+        <p>When the Party enters a Town, roll one random Magic Item for trade. The Party can trade Treasure (see table). The second Town won’t trade until the Party defeats the <b>City of Thieves.</b></p>
+        <pre>
+| Cost | Service / Product |
+| --- | --- |
+| 1 | 10 Supplies |
+| 1 | any Common Item |
+| 1 | Remove 3 Injuries |
+| 3 | Random Magic Item |
+        </pre>`,
     goodlands: `<h2>2’s and 6’s - Good Lands</h2>
         <p>Succeed on this <b>Party Challenge</b> to add Supplies equal to the roll. Failure has no cost.</p>`,
     terrible_beasties: `<h2>3’s, 4’s, and 5’s - Terrible Beasties!</h2>
@@ -79,6 +99,8 @@ on("ready", () => {
     };
     
     const rulesKeyTable = {
+        "Red": "hometown",
+        "Black": "strangetown",
         "Ace": "mountains",
         "Two": "goodlands",
         "Three": "terrible_beasties",
@@ -93,6 +115,77 @@ on("ready", () => {
         "Queen": "quests",
         "King": "factions"
     };
+    
+    const commands = {
+        'Two of Hearts': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit hearts --challenge 2)`;
+        },
+        'Two of Diamonds': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit diamonds --challenge 2)`;
+        },
+        'Two of Clubs': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit clubs --challenge 2)`;
+        },
+        'Two of Spades': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit spades --challenge 2)`;
+        },
+        'Six of Hearts': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit hearts --challenge 6)`;
+        },
+        'Six of Diamonds': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit diamonds --challenge 6)`;
+        },
+        'Six of Clubs': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit clubs --challenge 6)`;
+        },
+        'Six of Spades': (card) => {
+            return `[Forage for Supplies](!questcrawl --forage --suit spades --challenge 6)`;
+        },
+        'Jack of Spades': (card) => {
+            return `[Activate Counter-Clockwise](!questcrawl --twist cc --x ${card.x} --y ${card.y}) [Activate Clockwise](!questcrawl --twist c --x ${card.x} --y ${card.y})`
+        },
+        'Red Joker': (card) => {
+            return `[Shop](!questcrawl --shop)`
+        },
+        'Black Joker': (card) => {
+            if ((state.QuestCrawl.factions || {}).city_of_thieves === 2) {
+                return `[Shop](!questcrawl --shop)`
+            } else {
+                return `<h4>I Cannot Trade with you While Those Thieves Remain Active</h4>`
+            }
+        },
+        'King of Hearts': (card) => {
+            const comms = []
+            if ((state.QuestCrawl.factions || {}).dwarves === 1) {
+                comms.push('[Continue Fighting the Dwarves](!questcrawl --challengefaction dwarves)')
+            } else {
+                comms.push('[Challenge the Dwarves](!questcrawl --challengefaction dwarves)')
+                comms.push('[Buy 1 Enchanted Shield: 3 Treasure](!questcrawl --buy --item 9)')
+                if ((state.QuestCrawl.artifacts || {}).dwarven_tunnel_passport) {
+                    comms.push('[Take the Tunnels: Use Passport!](!questcrawl --tunnel)')
+                } else if ((state.QuestCrawl.factions || {}).elves === 2) {
+                    comms.push('[Claim Dwarven Tunnel Passport](!questcrawl --claimartifact 3)')
+                } else {
+                    comms.push('[Take the Tunnels: 1 Treasure](!questcrawl --tunnel)')
+                }
+            }
+            return comms.join('\n')
+        },
+        'King of Diamonds': (card) => {
+            const comms = []
+            if ((state.QuestCrawl.factions || {}).city_of_thieves === 1) {
+                comms.push('[Continue Fighting the City of Thieves](!questcrawl --challengefaction city_of_thieves)')
+            } else {
+                comms.push('[Challenge the City of Thieves](!questcrawl --challengefaction city_of_thieves)')
+                comms.push('[Shop](!questcrawl --shop --type magic)')
+                if (!(state.QuestCrawl.artifacts || {}).pocket_pirate_ship) {
+                    comms.push('[Buy Pocket Pirate Ship: 9 Treasure](!questcrawl --claimartifact 4)')
+                }
+            }
+            return comms.join('\n')
+        }
+
+    }
 
     function resetConfig() {
         if (!state.QuestCrawl) {
@@ -333,7 +426,20 @@ on("ready", () => {
 
         }
 
-        if (state.QuestCrawl.config.deck) {
+        if(args.find(n=>/^config(\b|$)/i.test(n))){
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
+            log(`setting configuration`)
+            log(params)
+            state.QuestCrawl.config = Object.assign(state.QuestCrawl.config, params);
+            return;
+        }
+
+        if (!state.QuestCrawl.config.deck) {
+            log(state.QuestCrawl)
             sendError(who, `
                 You must set a deck for questcrawl before using this mod
                 !questcrawl --config --deck <Name of Deck>
@@ -400,18 +506,18 @@ on("ready", () => {
             return;
         }
 
-        if(args.find(n=>/^config(\b|$)/i.test(n))){
-            const params = args.slice(2).reduce((m, x) => {
-                const [key, value] = x.split(' ')
-                m[key] = value;
-                return m;
-            }, {})
-            log(`setting configuration`)
-            log(params)
-            state.QuestCrawl.config = Object.assign(state.QuestCrawl.config, params);
+        if(args.find(n=>/^twist(\b|$)/i.test(n))){
+            const dir = args[1].split(' ')[1]
+            if (dir === "cc") {
+                log(`${dir} twist counterclockwise`)
+            } else if (dir === 'c') {
+                log(`${dir} twist clockwise`)
+            } else {
+                log(`invalid twist direction ${dir}`)
+            }
             return;
         }
-        
+
         if(args.find(n=>/^generate(\b|$)/i.test(n))) {
             
             if(grid.get({x:0,y:0}).cardid) {
@@ -473,8 +579,75 @@ on("ready", () => {
                 }
                 i++;
             }
+            return
         }
-    })
+        
+        let currentMagicItem = null;
+        
+        const magicItems = [
+            {
+                id: 8,
+                name: "Magic Sword"
+            },
+            {
+                id: 9,
+                name: "Enchanted Shield"
+            },
+            {
+                id: 10,
+                name: "Elven Cloak"
+            },
+            {
+                id: 11,
+                name: "Bottomless Bag"
+            },
+            {
+                id: 12,
+                name: "Book of Spells"
+            },
+            {
+                id: 13,
+                name: "Holy Rod"
+            }
+
+        ]
+        
+        if(args.find(n=>/^shop(\b|$)/i.test(n))){
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
+            if (params.type === 'magic') {
+                sendChat('QuestCrawl', `/w ${who} 
+                    ${magicItems.map((m) => {
+                        return `[Buy 1 ${m.name}: 4 Treasure](!questcrawl --buy --item ${m.id} --from thieves)`;
+                    }).join('\n')}
+                `);
+                
+            } else {
+                if (currentMagicItem === null) {
+                    currentMagicItem = magicItems[Math.floor(rng() * (magicItems.length - 1))]
+                }
+                sendChat('QuestCrawl', `/w ${who} [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1)
+                    [Buy 1 Compass: 1 Treasure](!questcrawl --buy --item 2)
+                    [Buy 1 Mountaineering Gear: 1 Treasure](!questcrawl --buy --item 3)
+                    [Buy 1 Survival Kit: 1 Treasure](!questcrawl --buy --item 4)
+                    [Buy 1 Map: 1 Treasure](!questcrawl --buy --item 5)
+                    [Buy 1 Healing Herb: 1 Treasure](!questcrawl --buy --item 6)
+                    [Buy 1 Rabbit's Foot: 1 Treasure](!questcrawl --buy --item 7)
+                    [Buy 1 ${currentMagicItem.name}: 3 Treasure](!questcrawl --buy --item ${currentMagicItem.id})`);
+            }
+            return;
+        }
+
+        sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
+    });
+
+    function getCommand(name, card) {
+        if (commands[name]) return commands[name](card)
+        return ''
+    }
     
     on('change:graphic', (obj, prev) => {
         if (obj.get("name") === "Party") {
@@ -492,6 +665,7 @@ on("ready", () => {
                         sendChat('QuestCrawl',`<div>
                             <h1>${data.get('name')}</h1>
                             <p>${r}<p>
+                            <p>${getCommand(data.get('name'), card)}</p>
                         </div>`);
                     }
                     log(`no data found for card ${data.get('name')}`)
@@ -502,6 +676,7 @@ on("ready", () => {
                         <h1>${data.get('name')}</h1>
                         <img src="${handout.get('avatar')}"/>
                         <p>${note}<p>
+                        <p>${getCommand(data.get('name'), card)}</p>
                     </div>`);
                 })
             }
