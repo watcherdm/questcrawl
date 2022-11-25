@@ -1,11 +1,121 @@
 "use strict";
 
+const rules = {
+    goodlands: `<h2>2’s and 6’s - Good Lands</h2>
+        <p>Succeed on this <b>Party Challenge</b> to add Supplies equal to the roll. Failure has no cost.</p>`,
+    terrible_beasties: `<h2>3’s, 4’s, and 5’s - Terrible Beasties!</h2>
+        <p>The player who flipped the card cries out, “Argh, it’s a Terrible Beastie!” Each player describes an aspect of the beast before rolling. Start with the player whose Character’s Suit matches the Beastie; proceed clockwise.</p>
+        <h5><i>Example:</i></h5>
+        <p>
+            P1: “Argh, it’s a Terrible Beastie! It has a Lobster’s Claws!”<br/>
+            P2: “Aye, and it hates anything with fingers!”<br/>
+            P3: “Aye, and it looks like Willem DaFoe, left in the sun too long!”<br/>
+            P4: “Aye, and it owes me money!”<br/>
+            All rolling together: “Slay the Beastie!”
+        </p>
+        <p>Failing this <b>Party Challenge</b> adds 1 Injury. Success adds 1 Treasure and rolls a die. Add one random Common Item on 3 or 4, 1 extra Treasure on 5, and one random Magic Item on 6.`,
+    hardlands: `<h2>7’s and 8’s - Hard Lands</h2>
+<p>The landscape is dizzyingly dense - or perhaps vast and featureless. Either way, it’s easy to get lost here. Succeed this <b>Champion Challenge</b> to move next turn. Failure prevents movement; retake the Challenge next turn instead.</p>`,
+    crises: `<h2>9’s - Crises</h2>
+        <p>♣ Forest Fires ♦ Sandstorms ❤ Mudslides ♠ Sinkholes<br/>
+        Wherever you are, something can go terribly wrong. When it does, only those who know the Terrain Type best can lead their friends to safety. <b>Champion Challenge</b> of 9. Failure adds 1 Injury to each Character. Only face-down Crises challenge the players; after the first time it’s played it becomes a Blank Territory. Crises flipped by Territory or Item effects are returned face-down.</p>`,
+    megabeasts: `## 10’s - Megabeast
+
+Here be Dragons - or Gigantic Laser-Eyed Crocodile-Moth-Gods. Your choice. Describe the Megabeast as if it were a Terrible Beastie, letting each player go twice.
+
+Failing this **Champion Challenge** of 10 adds 2 Injuries to each Character. Success allows the Party to escape uninjured if this card was flipped face-up this turn. Otherwise, the Party steals 2
+Treasure, one Magic Item, and one **Weapon of Legend**. Describe the weapon. These Items may only be stolen once per game.
+`,
+    mountains: `## Aces - Mountains
+
+Pass a **Champion Challenge** of 5 or return to the Territory you came from. Success flips all adjacent Territories. Suits don’t give Bonuses on Mountains.
+
+When the A♠ Mountain is first climbed, add one random Magic Item.
+`,
+    wonders: `## Jacks - Wonders
+
+**J**♣ **- Oracle of the Henge** - Trade 1 Treasure to flip three distant face-down Territories. Trade 3 Treasures to remove the Party’s Injuries.
+
+**J**♦ **- The Vault** - If the Party has the **Vault Key**, Characters add 9 Treasure each. Once looted, the Vault becomes a Blank Territory.
+
+**J**❤ **- Garden of Plenty** - Characters add 20 Supplies each. Roll a die. On a 1 or 2, the Garden becomes a Blank Territory.
+
+**J**♠ **- Twisting Pyramid** - Trade 1 Treasure to rotate the surrounding Territories either clockwise or counterclockwise.
+`,
+    factions: `## Kings - Factions
+
+Players may choose to battle Factions. Factions fight as Challenge 8 Terrible Beasties. At least half of the party (rounded up) must succeed to defeat a Faction. Defeated Factions become Blank Territories. Battled but undefeated Factions always battle. Defeat a Faction to add 5 Treasures and 10 Supplies each.
+
+**K**♣ **- Elves** - Trade 1 Treasure for 12 Supplies or 3 Treasures for an **Elven Cloak**. If you’ve defeated the **Dwarves**, gain **Ancient Knowledge**.
+
+**K**♦ **- City of Thieves** - Upon entering a connected Territory, roll a **Party Challenge** of 3. Failure removes 1 Treasure; you’ve been robbed! Trade 4 Treasures for any Magic Item or 9 Treasures for the **Pocket Pirate Ship**.
+
+**K**❤ **- Dwarves** - Counts as a Mountain. Trade 1 Treasure to move to a face-up Mountain or 3 Treasures for an **Enchanted Shield**. If you’ve defeated the **Elves**, gain the **Dwarven Tunnel Passport**.
+
+**K**♠ **- Unearthed Evil** - You’ve unleashed an ancient evil! Connected Territories 2-8 fight as Terrible Beasties until the Party defeats the Unearthed Evil.
+
+The Unearthed Evil always battles; there is no choice. Its Challenge is 12, minus 1 for each time the Twisting Pyramid has been used (minimum 9). Defeating the Unearthed Evil adds one
+random Magic Item, the **Vault Key**, and the **Orb of Chaos**.
+`,
+    quests: `### Queens - Quests
+
+This is what your Character has been looking for. How do they react? Once they find it, are they done? Or do they owe the Party one last score?
+
+- When a Character reaches the Quest that matches their Suit, they add a second Suit. Do this only once.
+- If a Character other than yours has found their Quest, your Character can have 6 Injuries before they are ☠ Dead.
+
+When all Quests have been achieved, the starting Town becomes the End Beast. Describe it as a Terrible Beastie, adding three details each. Treat it as a Suitless **Faction**, with a Challenge of 10. Only Characters with a **Weapon of Legend** can succeed against the End Beast. Once you’ve entered battle with the End Beast, the Party no longer moves. You must fight or die. Defeat it to win the game!
+`
+};
+
+
 on("ready", () => {
-    
+    let rng = Math.random;
     const cardSize = 70;
     const offset = 1050;
+    function cyrb128(str) {
+        let h1 = 1779033703, h2 = 3144134277,
+            h3 = 1013904242, h4 = 2773480762;
+        for (let i = 0, k; i < str.length; i++) {
+            k = str.charCodeAt(i);
+            h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+            h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+            h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+            h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+        }
+        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+        h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+        h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+        return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
+    };
     
-    if (! state.QuestCrawl) {
+    function mulberry32(a) {
+        return function() {
+          var t = a += 0x6D2B79F5;
+          t = Math.imul(t ^ t >>> 15, t | 1);
+          t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
+    };
+    
+    const rulesKeyTable = {
+        "Ace": "mountains",
+        "Two": "goodlands",
+        "Three": "terrible_beasties",
+        "Four": "terrible_beasties",
+        "Five": "terrible_beasties",
+        "Six": "goodlands",
+        "Seven": "hardlands",
+        "Eight": "hardlands",
+        "Nine": "crises",
+        "Ten": "megabeasts",
+        "Jack": "wonders",
+        "Queen": "quests",
+        "King": "factions"
+    };
+
+    if (!state.QuestCrawl) {
         state.QuestCrawl = {
             version: 2.1,
             config: {
@@ -21,165 +131,23 @@ on("ready", () => {
         }
     }
     
-    const keyFormat = (s)=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
-    
-    const lookupDecks = (()=>{
-    
-        let decks = findObjs({
-            type: 'deck'
-        }).reduce( (m,d) => (m[d.id]=d) && m, {});
-    
-        let lookup = Object.keys(decks).reduce( (m,k) => (m[keyFormat(decks[k].get('name'))]=k) && m, {});
-    
-        on('add:deck',(d)=>{
-            decks[d.id]=d;
-            lookup[keyFormat(d.get('name'))]=d.id;
-        });
-    
-        on('change:deck',(d,p)=>{
-            if(d.get('name') !== p.name){
-                delete lookup[keyFormat(p.name)];
-                lookup[keyFormat(d.get('name'))]=d.id;
-            }
-        });
-    
-        on('destroy:deck',(d)=>{
-            delete decks[d.id];
-            delete lookup[keyFormat(d.get('name'))];
-        });
-    
-        return (nameFragment) => {
-            let key = keyFormat(nameFragment);
-            return Object.keys(lookup).filter( k => -1 !== k.indexOf(key)).map(k => decks[lookup[k]]);
-        };
-    })();
-    
-    
-    const getPageForPlayer = (playerid) => {
-        let player = getObj('player',playerid);
-        if(playerIsGM(playerid)){
-            return player.get('lastpage');
-        }
-    
-        let psp = Campaign().get('playerspecificpages');
-        if(psp[playerid]){
-            return psp[playerid];
-        }
-    
-        return Campaign().get('playerpageid');
-    };
-    
-    
-    const lookupCards = (()=>{
-
-        let cards = findObjs({
-            type: 'card'
-        }).reduce( (m,c) => {
-            let did = c.get('deckid');
-            m[did] = m[did]||{};
-            m[did][c.id]=c;
-            return m;
-        },{});
-
-        let lookup = Object.keys(cards).reduce( (memo, did) => {
-            memo[did]=Object.keys(cards[did]).reduce( (m,k) => (m[keyFormat(cards[did][k].get('name'))]=k) && m, {});
-            return memo;
-        },{});
-
-        on('add:card',(c)=>{
-            if('card'===c.get('type')){
-                let did = c.get('deckid');
-                cards[did] = cards[did]||{};
-                cards[did][c.id]=c;
-                lookup[did]=lookup[did]||{};
-                lookup[did][keyFormat(c.get('name'))]=c.id;
-            }
-        });
-
-        on('change:card',(c,p)=>{
-            if('card'===c.get('type') && c.get('name') !== c.name){
-                let did = c.get('deckid');
-                delete lookup[did][keyFormat(p.name)];
-                lookup[did][keyFormat(c.get('name'))]=c.id;
-            }
-        });
-
-        on('destroy:card',(c)=>{
-            if('card'===c.get('type')){
-                let did = c.get('deckid');
-                delete cards[did][c.id];
-                delete lookup[did][keyFormat(c.get('name'))];
-            }
-        });
-
-        return (deckid, nameFragment) => {
-            let key = keyFormat(nameFragment);
-            return Object.keys(lookup[deckid]).filter( k => -1 !== k.indexOf(key)).map(k => cards[deckid][lookup[deckid][k]]);
-        };
-    })();
-
-    const isCleanImgsrc = (imgsrc) => /(.*\/images\/.*)(thumb|med|original|max)([^?]*)(\?[^?]+)?$/.test(imgsrc);
-
-	const getCleanImgsrc = (imgsrc) => {
-		let parts = imgsrc.match(/(.*\/images\/.*)(thumb|med|original|max)([^?]*)(\?[^?]+)?$/);
-		if(parts) {
-			return parts[1]+'thumb'+parts[3]+(parts[4]?parts[4]:`?${Math.round(Math.random()*9999999)}`);
-		}
-		return;
-	};
-
-    const fixedPlayCardToTable = (cardid, options) => {
-        let card = getObj('card',cardid);
-        if(card){
-            let deck = getObj('deck',card.get('deckid'));
-            if(deck){
-                if(!isCleanImgsrc(deck.get('avatar')) && !isCleanImgsrc(card.get('avatar'))){
-                    // marketplace-marketplace:
-                    playCardToTable(cardid, options);
-                } else if (isCleanImgsrc(deck.get('avatar')) && isCleanImgsrc(card.get('avatar'))){
-                    let pageid = options.pageid || Campaign().get('playerpageid');
-                    let page = getObj('page',pageid);
-                    if(page){
-
-                        let imgs=[getCleanImgsrc(card.get('avatar')),getCleanImgsrc(deck.get('avatar'))];
-                        let currentSide = options.hasOwnProperty('currentSide')
-                            ? options.currentSide
-                            : ('faceup' === deck.get('cardsplayed')
-                                ? 0
-                                : 1
-                            );
-
-                        let width = options.width || parseInt(deck.get('defaultwidth')) || 140;
-                        let height = options.height || parseInt(deck.get('defaultheight')) || 210;
-                        let left = options.left || (parseInt(page.get('width'))*70)/2;
-                        let top = options.top || (parseInt(page.get('height'))*70)/2;
-
-                        createObj( 'graphic', {
-                            subtype: 'card',
-                            cardid: card.id,
-                            pageid: page.id,
-                            currentSide: currentSide,
-                            imgsrc: imgs[currentSide],
-                            sides: imgs.map(i => encodeURIComponent(i)).join('|'),
-                            left,top,width,height,
-                            layer: 'objects',
-                            isdrawing: true,
-                            controlledby: 'all',
-                            gmnotes: `cardid:${card.id}`
-                        });
-                    } else {
-                        sendError('gm',`Specified pageid does not exists.`);
-                    }
-                } else {
-                    sendError('gm',`Can't create cards for a deck mixing Marketplace and User Library images.`);
-                }
-            } else {
-                sendError('gm',`Cannot find deck for card ${card.get('name')}`);
-            }
+    function resetRng() {
+        if (state.QuestCrawl.config.seed) {
+            log(`setting rng to mulberry with seed ${state.QuestCrawl.config.seed}`)
+            const seed = cyrb128(state.QuestCrawl.config.seed)
+            rng = mulberry32(seed[0])
         } else {
-            sendError('gm',`Cannot find card for id ${cardid}`);
+            rng = Math.random
         }
-    };
+    }
+
+    on("add:player", (player) => {
+        log(player)
+    });
+    
+    function endTurn() {
+        state.QuestCrawl.grid = grid.toJSON()
+    }
 
     const processInlinerolls = (msg) => {
         if(_.has(msg,'inlinerolls')){
@@ -248,11 +216,46 @@ on("ready", () => {
         ];
     }
     
+    function GapCard({x, y}) {
+        this.x = x
+        this.y = y
+        this.id = 'Gap'
+        this.cardid = 'Lake'
+    }
+
+    GapCard.prototype = {
+        getCoordString: function(){return `${this.x},${this.y}`},
+        getRandomNeighbor: function(){
+            let {x, y} = this;
+            const n = this.neighbors[Math.floor(rng() * 7)];
+            x += n.x
+            y += n.y
+            const openSlots = this.neighbors.some((n) => {
+                return !grid.get({x: this.x + n.x, y: this.y + n.y}).id
+            })
+            if (!openSlots) {
+                open.splice(open.indexOf(this), 1)
+            }
+            return {x, y}
+        },
+        toJSON: function() {
+            return {
+                x: this.x,
+                y: this.y,
+                cardid: this.cardid,
+                id: this.id
+            }
+        },
+        place: function(){
+            grid.put(this)
+        }
+    }
+    
     QuestCrawlCard.prototype = {
         getCoordString: function(){return `${this.x},${this.y}`},
         getRandomNeighbor: function(){
             let {x, y} = this;
-            const n = this.neighbors[Math.floor(Math.random() * 7)];
+            const n = this.neighbors[Math.floor(rng() * 7)];
             x += n.x
             y += n.y
             const openSlots = this.neighbors.some((n) => {
@@ -283,8 +286,8 @@ on("ready", () => {
         }
     }
 
-    function getRandomPlacedCard() {
-        return open[Math.floor(Math.random() * (open.length - 1))];
+    function getRandomOpenCard() {
+        return open[Math.floor(rng() * (open.length - 1))];
     }
 
     function toCoords(left, top) {
@@ -292,7 +295,7 @@ on("ready", () => {
     }
 
     function detectGameState() {
-        const currentDeck = lookupDecks("QuestCrawl3")[0]
+        const currentDeck = findObjs({type: 'deck', name: state.QuestCrawl.config.deck})[0]
         const deckid = currentDeck.id
         if (!grid.get({x:0,y:0}).id) {
             const ci = cardInfo({type: 'graphic', deckid })
@@ -315,21 +318,48 @@ on("ready", () => {
         if ( 'api' !== msg.type || !/^!questcrawl\b/i.test(msg.content)) {
             return
         }
-        
-        let who = (getObj('player', msg.playerid) || {get:()=>'API'}).get('_displayname');
-        let pageid = getPageForPlayer(msg.playerid);
-        
+
+        let player = getObj('player', msg.playerid);
+        let who = (player || {get:()=>'API'}).get('_displayname');
+
         let args = processInlinerolls(msg)
             .replace(/<br\/>\n/g, ' ')
             .replace(/(\{\{(.*?)\}\})/g," $2 ")
             .split(/\s+--/);
 
-        const currentDeck = lookupDecks("QuestCrawl3")[0]
+        const currentDeck = findObjs({type: 'deck', name: state.QuestCrawl.config.deck})[0]
         const deckid = currentDeck.id
+        
+        if(args.find(n=>/^start(\b|$)/i.test(n))) {
+            const players = findObjs({type: 'player'})
+            const characters =findObjs({type: 'character'})
+            players.forEach((p) => {
+                if (p.get('online')) {
+                    const c = characters.find((c) => c.get('controlledby') === p.id)
+                    if (!c){
+                        sendChat('QuestCrawl', `/w ${who} [Create A Character](!questcrawl --create)`);
+                    } else {
+                        const name = c.get('name');
+                        sendChat('QuestCrawl', `/w ${who} <h3>Confirm Your Character</h3><p>You are currently playing [${name}](http://journal.roll20.net/character/${c.id}) (you can click this link to access the character sheet for editing.)</p><hr/> [Yup](!questcrawl --confirm) [Nope](!questcrawl --deny)`)
+                        log(c)
+                    }
+                }
+            })
+            return
+        }
+        
+        if(args.find(n=>/^create(\b|$)/i.test(n))) {
+            const name = `${who}'s QuestCrawl Character`;
+            const character = createObj('character', {
+                name,
+                inplayerjournals: "all",
+                controlledby: player.id
+            })
+            sendChat('QuestCrawl', `/w ${who} [${name}](http://journal.roll20.net/character/${character.id}) Created, Click to Edit`);
+            return
+        }
+        
         if(args.find(n=>/^reset(\b|$)/i.test(n))) {
-            grid = new Grid()
-            placed = []
-            open = []
             setTimeout(() => {
                 recallCards(deckid)
                 setTimeout(() => {
@@ -339,10 +369,13 @@ on("ready", () => {
                         setTimeout(() => {
                             shuffleDeck(deckid)
                             log("cards reset")
-                        }, 1000)
-                    }, 1000)
-                }, 1000)
-            }, 1000)
+                            grid = new Grid()
+                            placed = []
+                            open = []
+                        }, 100)
+                    }, 100)
+                }, 100)
+            }, 100)
             return;
         }
 
@@ -350,9 +383,36 @@ on("ready", () => {
             showHelp(who);
             return;
         }
+
+        if(args.find(n=>/^config(\b|$)/i.test(n))){
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
+            log(`setting configuration`)
+            log(params)
+            state.QuestCrawl.config = Object.assign(state.QuestCrawl.config, params);
+            return;
+        }
         
         if(args.find(n=>/^generate(\b|$)/i.test(n))) {
-            const startingTown = lookupCards(deckid, "Red Joker")[0]
+            
+            if(grid.get({x:0,y:0}).cardid) {
+                log('Island Already Generated: Reset to Generate Again')
+                return;
+            }
+            
+            resetRng();
+
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
+            log(`Generate Island called with params ${JSON.stringify(params)}`)
+
+            const startingTown = findObjs({type: 'card', deckid, name: "Red Joker"})[0]
             drawCard(deckid, startingTown.id)
             const scard = new QuestCrawlCard({x: 0, y: 0, cardid: startingTown.id})
     
@@ -360,21 +420,38 @@ on("ready", () => {
             
             const l = findObjs({type: 'graphic', cardid: startingTown.id})[0]
             scard.id = l.id
+            const gaps = parseInt(params.gaps, 10) || 0
+            if (gaps > 27) {
+                sendError('Invalid Parameter --gaps must be less than 27')
+                return;
+            }
+            const gapSplit = Math.floor(54 / gaps)
+            let i = 0;
             while (placed.length < 54) {
-                const cardid = drawCard(deckid)
-                if (cardid === false || cardid.indexOf('-') !== 0) {
-                    log(cardid)
-                    log(open)
-                    break;
-                }
-                let target = grid.get(getRandomPlacedCard().getRandomNeighbor());
+                let target = grid.get(getRandomOpenCard().getRandomNeighbor());
                 while (target.id) {
-                    target = grid.get(getRandomPlacedCard().getRandomNeighbor());
+                    if (open.length < 1) {
+                        sendError("Unable to Generate Island")
+                        return;
+                    }
+                    target = grid.get(getRandomOpenCard().getRandomNeighbor());
                 }
-                const card = new QuestCrawlCard({x: target.x, y: target.y, cardid: cardid})
-                card.place()
-                const l = findObjs({type: 'graphic', cardid: cardid})[0]
-                card.id = l.id
+                if ((gaps !== 0) && (i % gapSplit === 0)) {
+                    const gap = new GapCard({x: target.x, y: target.y})
+                    gap.place();
+                } else {
+                    const cardid = drawCard(deckid)
+                    if (cardid === false || cardid.indexOf('-') !== 0) {
+                        log(cardid)
+                        log(open)
+                        break;
+                    }
+                    const card = new QuestCrawlCard({x: target.x, y: target.y, cardid: cardid})
+                    card.place()
+                    const l = findObjs({type: 'graphic', cardid: cardid})[0]
+                    card.id = l.id
+                }
+                i++;
             }
         }
     })
@@ -390,6 +467,13 @@ on("ready", () => {
                 const data = getObj('card', card.cardid)
                 const handout = findObjs({type: 'handout', name: data.get('name')})[0]
                 if (!handout) {
+                    const r = rules[rulesKeyTable[data.get('name').split(' ')[0]]]
+                    if (r) {
+                        sendChat('QuestCrawl',`<div>
+                            <h1>${data.get('name')}</h1>
+                            <p>${r}<p>
+                        </div>`);
+                    }
                     log(`no data found for card ${data.get('name')}`)
                     return
                 }
