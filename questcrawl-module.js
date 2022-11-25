@@ -159,7 +159,7 @@ on("ready", () => {
             if ((state.QuestCrawl.factions || {}).dwarves === 1) {
                 comms.push('[Continue Fighting the Dwarves](!questcrawl --challengefaction dwarves)')
             } else {
-                comms.push('[Challenge the Dwarves](!questcrawl --challengefaction dwarves)')
+                comms.push('[Fight the Dwarves](!questcrawl --challengefaction dwarves)')
                 comms.push('[Buy 1 Enchanted Shield: 3 Treasure](!questcrawl --buy --item 9)')
                 if ((state.QuestCrawl.artifacts || {}).dwarven_tunnel_passport) {
                     comms.push('[Take the Tunnels: Use Passport!](!questcrawl --tunnel)')
@@ -176,11 +176,34 @@ on("ready", () => {
             if ((state.QuestCrawl.factions || {}).city_of_thieves === 1) {
                 comms.push('[Continue Fighting the City of Thieves](!questcrawl --challengefaction city_of_thieves)')
             } else {
-                comms.push('[Challenge the City of Thieves](!questcrawl --challengefaction city_of_thieves)')
-                comms.push('[Shop](!questcrawl --shop --type magic)')
+                comms.push('[Fight the City of Thieves](!questcrawl --challengefaction city_of_thieves)')
+                comms.push('[Shop Magic Items](!questcrawl --shop --type magic)')
                 if (!(state.QuestCrawl.artifacts || {}).pocket_pirate_ship) {
                     comms.push('[Buy Pocket Pirate Ship: 9 Treasure](!questcrawl --claimartifact 4)')
                 }
+            }
+            return comms.join('\n')
+        },
+        'King of Clubs': (card) => {
+            const comms = []
+            if ((state.QuestCrawl.factions || {}).elves === 1) {
+                comms.push('[Continue Fighting the Elves](!questcrawl --challengefaction elves)')
+            } else {
+                comms.push('[Fight the Elves](!questcrawl --challengefaction elves)')
+                comms.push('[Buy 12 Supplies: 1 Treasure](!questcrawl --buy --item 14)')
+                comms.push('[Buy 1 Elven Cloak: 3 Treasure](!questcrawl --buy --item 10)')
+                if ((state.QuestCrawl.factions || {}).dwarves === 2 && !(state.QuestCrawl.artifacts || {}).ancient_knowledge) {
+                    comms.push('[Claim Ancient Knowledge](!questcrawl --claimartifact 2)')
+                }
+            }
+            return comms.join('\n')
+        },
+        'King of Spades': (card) => {
+            const comms = []
+            if ((state.QuestCrawl.factions || {}).unearthed_evil === 1) {
+                comms.push('[Continue Fighting the Unearthed Evil](!questcrawl --challengefaction unearthed_evil)')
+            } else {
+                comms.push('[Fight the Unearthed Evil](!questcrawl --challengefaction unearthed_evil)')
             }
             return comms.join('\n')
         }
@@ -629,7 +652,8 @@ on("ready", () => {
                 if (currentMagicItem === null) {
                     currentMagicItem = magicItems[Math.floor(rng() * (magicItems.length - 1))]
                 }
-                sendChat('QuestCrawl', `/w ${who} [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1)
+                sendChat('QuestCrawl', `/w ${who} 
+                    [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1)
                     [Buy 1 Compass: 1 Treasure](!questcrawl --buy --item 2)
                     [Buy 1 Mountaineering Gear: 1 Treasure](!questcrawl --buy --item 3)
                     [Buy 1 Survival Kit: 1 Treasure](!questcrawl --buy --item 4)
