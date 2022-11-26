@@ -141,6 +141,9 @@ on("ready", () => {
         'Six of Spades': (card) => {
             return `[Forage for Supplies](!questcrawl --forage --suit spades --challenge 6)`;
         },
+        'Jack of Clubs': (card) => {
+            return `[Farseeing: 1 Treasure](!questcrawl --map 3) [Heal the Party: 3 Treasure](!questcrawl --heal)`
+        },
         'Jack of Spades': (card) => {
             return `[Activate Counter-Clockwise](!questcrawl --twist cc --x ${card.x} --y ${card.y}) [Activate Clockwise](!questcrawl --twist c --x ${card.x} --y ${card.y})`
         },
