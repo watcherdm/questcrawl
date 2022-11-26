@@ -289,9 +289,9 @@ on("ready", () => {
         this.cardid = cardid
         this.faceup = false
         this.neighbors = [
-            {x:-1,y:-1},{x:-1,y:0},{x:-1,y:1}, 
-            {x:0,y:-1},{x: 0, y: 1},
-            {x:1,y:-1},{x: 1, y: 0},{x:1,y:1}
+            {x:-1,y:-1},{x:0,y:-1},{x:1,y:-1},
+            {x:-1,y:0},{x: 1, y: 0},
+            {x:-1,y:1},{x: 0, y: 1},{x:1,y:1}
         ];
     }
     
@@ -345,6 +345,12 @@ on("ready", () => {
             }
             return {x, y}
         },
+        getAllNeighbors: function() {
+            let {x, y} = this;
+            return this.neighbors.map((n) => {
+                return {x: x + n.x, y: y + n.y}
+            });
+        },
         place: function(faceup = false){
             if (faceup) {
                 this.faceup = faceup
@@ -355,8 +361,12 @@ on("ready", () => {
                 currentSide: this.faceup ? 0 : 1
             });
             grid.put(this)
-            placed.push(this)
-            open.push(this)
+            if (placed.indexOf(this) === -1) {
+                placed.push(this)
+            }
+            if (open.indexOf(this) === -1) {
+                open.push(this)
+            }
         },
         toJSON: function() {
             return {
@@ -382,6 +392,14 @@ on("ready", () => {
         },
         toJSON: function() {
             return Object.values(this.internal)
+        },
+        move: function(card, coords) {
+            if (this.internal[card.getCoordString()] === card) {
+                delete this.internal[card.getCoordString()]
+            }
+            card.x = coords.x
+            card.y = coords.y
+            this.put(card)
         }
     }
 
@@ -581,11 +599,65 @@ on("ready", () => {
         }
 
         if(args.find(n=>/^twist(\b|$)/i.test(n))){
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
             const dir = args[1].split(' ')[1]
+            const {x, y} = params
+            const ccPropMap = [
+                {y: 1},
+                {x: -1},
+                {x: -1},
+                {y: 1},
+                {y: -1},
+                {x: 1},
+                {x: 1},
+                {y: -1}
+            ]
+            const cPropMap = [
+                {x: 1},
+                {x: 1},
+                {y: 1},
+                {y: -1},
+                {y: 1},
+                {y: -1},
+                {x: -1},
+                {x: -1}
+            ]
             if (dir === "cc") {
                 log(`${dir} twist counterclockwise`)
+                const pyramid = grid.get({x, y})
+                pyramid.getAllNeighbors().map((n) => {
+                    return grid.get(n)
+                }).forEach((ncard, i) => {
+                    if (ncard.id) {
+                        const x = ncard.x + (ccPropMap[i].x || 0);
+                        const y = ncard.y + (ccPropMap[i].y || 0)
+                        grid.move(ncard, {x, y})
+                        getObj('graphic', ncard.id).set({
+                            left: offset + (x * cardSize) + (cardSize / 2),
+                            top: offset + (y * cardSize) + (cardSize / 2)
+                        })
+                    }
+                })
             } else if (dir === 'c') {
                 log(`${dir} twist clockwise`)
+                const pyramid = grid.get({x, y})
+                pyramid.getAllNeighbors().map((n) => {
+                    return grid.get(n)
+                }).forEach((ncard, i) => {
+                    if (ncard.id) {
+                        const x = ncard.x + (cPropMap[i].x || 0);
+                        const y = ncard.y + (cPropMap[i].y || 0)
+                        grid.move(ncard, {x, y})
+                        getObj('graphic', ncard.id).set({
+                            left: offset + (x * cardSize) + (cardSize / 2),
+                            top: offset + (y * cardSize) + (cardSize / 2)
+                        })
+                    }
+                })
             } else {
                 log(`invalid twist direction ${dir}`)
             }
@@ -732,8 +804,16 @@ on("ready", () => {
             const coord = {x: (left - offset - (cardSize / 2)) / cardSize , y: (top - offset - (cardSize / 2)) / cardSize}
             const card = grid.get(coord)
             if (card.cardid) {
-                card.faceup = true;
-                card.place(true)
+                if (!card.faceup) {
+                    card.faceup = true
+                    const gra = getObj('graphic', card.id)
+                    log(gra.get('sides').split('|')[0])
+                    gra.set({
+                        currentSide: 0,
+                        imgsrc: decodeURIComponent(gra.get('sides').split('|')[0].replace('med.png', 'thumb.png'))
+                    })
+                }
+                
                 const data = getObj('card', card.cardid)
                 const handout = findObjs({type: 'handout', name: data.get('name')})[0]
                 if (!handout) {
