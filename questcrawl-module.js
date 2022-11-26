@@ -528,7 +528,6 @@ on("ready", () => {
         const deckid = currentDeck.id
 
         if(args.find(n=>/^reset(\b|$)/i.test(n))) {
-
             setTimeout(() => {
                 recallCards(deckid)
                 setTimeout(() => {
@@ -642,6 +641,7 @@ on("ready", () => {
                         })
                     }
                 })
+                state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
             } else if (dir === 'c') {
                 log(`${dir} twist clockwise`)
                 const pyramid = grid.get({x, y})
@@ -658,6 +658,7 @@ on("ready", () => {
                         })
                     }
                 })
+                state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
             } else {
                 log(`invalid twist direction ${dir}`)
             }
