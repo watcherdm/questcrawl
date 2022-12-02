@@ -67,8 +67,17 @@ on("ready", () => {
             <p>When all Quests have been achieved, the starting Town becomes the End Beast. Describe it as a Terrible Beastie, adding three details each. Treat it as a Suitless **Faction**, with a Challenge of 10. Only Characters with a **Weapon of Legend** can succeed against the End Beast. Once you’ve entered battle with the End Beast, the Party no longer moves. You must fight or die. Defeat it to win the game!</p>`
         };
     let rng = Math.random;
-    const cardSize = 70;
-    const offset = 1050;
+    
+    let cardSize = 70;
+    let offset = 1085;
+    const vOffset = 847;
+    const hOffset = 864;
+    
+    const offsets = {
+        x: 37.5,
+        y: 67
+    }
+
 
     function cyrb128(str) {
         let h1 = 1779033703, h2 = 3144134277,
@@ -243,7 +252,10 @@ on("ready", () => {
             const seed = cyrb128(state.QuestCrawl.config.seed)
             rng = mulberry32(seed[0])
         } else {
-            rng = Math.random
+            const kernel = Math.random()
+            const seed = cyrb128(kernel)
+            rng = mulberry32(seed[0])
+            log(`seed: ${kernel}`)
         }
     }
 
@@ -283,16 +295,35 @@ on("ready", () => {
     const sendError = (who, msg) => sendChat('QuestCrawl',`/w "${who}" ${msg}`);
 
     function QuestCrawlCard({x, y, id, cardid}) {
+        const {mode} = state.QuestCrawl.config;
         this.x = x
         this.y = y
         this.id = id
         this.cardid = cardid
         this.faceup = false
-        this.neighbors = [
-            {x:-1,y:-1},{x:0,y:-1},{x:1,y:-1},
-            {x:-1,y:0},{x: 1, y: 0},
-            {x:-1,y:1},{x: 0, y: 1},{x:1,y:1}
-        ];
+
+
+        if (mode === 'original') {
+            this.neighbors = [
+                {x:-1,y:-1},{x:0,y:-1},{x:1,y:-1},
+                {x:-1,y:0},{x: 1, y: 0},
+                {x:-1,y:1},{x: 0, y: 1},{x:1,y:1}
+            ];
+            this.cardSize = 70;
+        } else if (mode === 'hexagon') {
+            this.neighbors = [
+                {x: -.5, y: -1},
+                {x: .5, y: -1},
+                {x: -1, y: 0},
+                {x: 1, y: 0},
+                {x: -.5, y: 1},
+                {x: .5, y: 1}
+            ];
+            this.cardSize = {
+                w: 75,
+                h: 88
+            }
+        }
     }
     
     function GapCard({x, y}) {
@@ -303,20 +334,7 @@ on("ready", () => {
     }
 
     GapCard.prototype = {
-        getCoordString: function(){return `${this.x},${this.y}`},
-        getRandomNeighbor: function(){
-            let {x, y} = this;
-            const n = this.neighbors[Math.floor(rng() * 7)];
-            x += n.x
-            y += n.y
-            const openSlots = this.neighbors.some((n) => {
-                return !grid.get({x: this.x + n.x, y: this.y + n.y}).id
-            })
-            if (!openSlots) {
-                open.splice(open.indexOf(this), 1)
-            }
-            return {x, y}
-        },
+        getCoordString: function(){return `${this.x.toFixed(1)},${this.y.toFixed(1)}`},
         toJSON: function() {
             return {
                 x: this.x,
@@ -331,10 +349,10 @@ on("ready", () => {
     }
     
     QuestCrawlCard.prototype = {
-        getCoordString: function(){return `${this.x},${this.y}`},
+        getCoordString: function(){return `${this.x.toFixed(1)},${this.y.toFixed(1)}`},
         getRandomNeighbor: function(){
             let {x, y} = this;
-            const n = this.neighbors[Math.floor(rng() * 7)];
+            const n = this.neighbors[Math.floor(rng() * (this.neighbors.length - 1))];
             x += n.x
             y += n.y
             const openSlots = this.neighbors.some((n) => {
@@ -352,14 +370,25 @@ on("ready", () => {
             });
         },
         place: function(faceup = false){
+            const {mode} = state.QuestCrawl.config;
             if (faceup) {
                 this.faceup = faceup
             }
-            playCardToTable(this.cardid, {
-                left: offset + (this.x * cardSize) + cardSize/2,
-                top: offset + (this.y * cardSize) + cardSize/2,
-                currentSide: this.faceup ? 0 : 1
-            });
+            if (mode === 'original') {
+                playCardToTable(this.cardid, {
+                    left: offset + (this.x * this.cardSize),
+                    top: offset + (this.y * this.cardSize),
+                    currentSide: this.faceup ? 0 : 1
+                });
+            } else if (mode === 'hexagon') {
+                playCardToTable(this.cardid, {
+                    left: hOffset + (this.x * this.cardSize.w),
+                    top: vOffset + (this.y * offsets.y),
+                    currentSide: this.faceup ? 0 : 1
+                });
+            } else {
+                throw new Error(`Invalid mode unknown: ${mode}`)
+            }
             grid.put(this)
             if (placed.indexOf(this) === -1) {
                 placed.push(this)
@@ -385,7 +414,7 @@ on("ready", () => {
     
     Grid.prototype = {
         get: function({x, y}) {
-            return this.internal[`${x},${y}`] || {x,y};
+            return this.internal[`${x.toFixed(1)},${y.toFixed(1)}`] || {x,y};
         },
         put: function(card) {
             this.internal[card.getCoordString()] = card;
@@ -434,7 +463,18 @@ on("ready", () => {
     }
 
     function toCoords(left, top) {
-        return {x: (left - offset - (cardSize / 2)) / cardSize , y: (top - offset - (cardSize / 2)) / cardSize}
+        const {mode} = state.QuestCrawl.config;
+        if (mode === 'original') {
+            return {x: (left - offset) / cardSize , y: (top - offset) / cardSize}
+        } else if (mode === 'hexagon') {
+            cardSize = {
+                w: 75,
+                h: 88
+            };
+            const x = parseFloat(((left - hOffset) / cardSize.w).toFixed(1), 10);
+            const y = parseFloat(((top - vOffset) / offsets.y).toFixed(1));
+            return { x , y }
+        }
     }
 
     function detectGameState() {
@@ -454,7 +494,7 @@ on("ready", () => {
                 const left = gra.get('left')
                 const top = gra.get('top')
                 const {x,y} = toCoords(left, top)
-                const card = new QuestCrawlCard({x, y, id: c.id, cardid: c.cardid })
+                const card = new QuestCrawlCard({x: 0+ x, y : 0 + y, id: c.id, cardid: c.cardid })
                 grid.put(card)
             })
         }
@@ -523,7 +563,7 @@ on("ready", () => {
             `)
             return;
         }
-
+        
         const currentDeck = findObjs({type: 'deck', name: state.QuestCrawl.config.deck})[0]
         const deckid = currentDeck.id
 
@@ -635,10 +675,13 @@ on("ready", () => {
                         const x = ncard.x + (ccPropMap[i].x || 0);
                         const y = ncard.y + (ccPropMap[i].y || 0)
                         grid.move(ncard, {x, y})
-                        getObj('graphic', ncard.id).set({
-                            left: offset + (x * cardSize) + (cardSize / 2),
-                            top: offset + (y * cardSize) + (cardSize / 2)
-                        })
+                        const g = getObj('graphic', ncard.id)
+                        if (g) {
+                            g.set({
+                                left: offset + (x * cardSize) + (cardSize / 2),
+                                top: offset + (y * cardSize) + (cardSize / 2)
+                            })
+                        }
                     }
                 })
                 state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
@@ -794,7 +837,9 @@ on("ready", () => {
     });
 
     function getCommand(name, card) {
-        if (commands[name]) return commands[name](card)
+        if ((state.QuestCrawl.config || {}).commands) {
+            if (commands[name]) return commands[name](card)
+        }
         return ''
     }
     
@@ -802,13 +847,16 @@ on("ready", () => {
         if (obj.get("name") === "Party") {
             const left = parseInt(obj.get("left"), 10)
             const top = parseInt(obj.get("top"), 10)
-            const coord = {x: (left - offset - (cardSize / 2)) / cardSize , y: (top - offset - (cardSize / 2)) / cardSize}
+            const coord = toCoords(left, top)
+            log(coord)
             const card = grid.get(coord)
             if (card.cardid) {
                 if (!card.faceup) {
                     card.faceup = true
                     const gra = getObj('graphic', card.id)
-                    log(gra.get('sides').split('|')[0])
+                    if (!gra) {
+                        return
+                    }
                     gra.set({
                         currentSide: 0,
                         imgsrc: decodeURIComponent(gra.get('sides').split('|')[0].replace('med.png', 'thumb.png'))
@@ -821,7 +869,7 @@ on("ready", () => {
                     const r = rules[rulesKeyTable[data.get('name').split(' ')[0]]]
                     if (r) {
                         sendChat('QuestCrawl',`<div>
-                            <h1>${data.get('name')}</h1>
+                            <h3>${data.get('name')}</h3>
                             <p>${r}<p>
                             <p>${getCommand(data.get('name'), card)}</p>
                         </div>`);
@@ -831,8 +879,8 @@ on("ready", () => {
                 }
                 handout.get("notes", (note) => {
                     sendChat('QuestCrawl',`<div>
-                        <h1>${data.get('name')}</h1>
                         <img src="${handout.get('avatar')}"/>
+                        <h5>${data.get('name')}</h5>
                         <p>${note}<p>
                         <p>${getCommand(data.get('name'), card)}</p>
                     </div>`);
