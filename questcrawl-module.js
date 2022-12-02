@@ -78,6 +78,38 @@ on("ready", () => {
         y: 67
     }
 
+    const generateUUID = (() => {
+        let a = 0;
+        let b = [];
+        return () => {
+            let c = (new Date()).getTime() + 0;
+            let f = 7;
+            let e = new Array(8);
+            let d = c === a;
+            a = c;
+            for (; 0 <= f; f--) {
+                e[f] = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(c % 64);
+                c = Math.floor(c / 64);
+            }
+            c = e.join("");
+            if (d) {
+                for (f = 11; 0 <= f && 63 === b[f]; f--) {
+                    b[f] = 0;
+                }
+                b[f]++;
+            } else {
+                for (f = 0; 12 > f; f++) {
+                    b[f] = Math.floor(64 * Math.random());
+                }
+            }
+            for (f = 0; 12 > f; f++) {
+                c += "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz".charAt(b[f]);
+            }
+            return c;
+        };
+    })();
+    
+    const generateRowID = () => generateUUID().replace(/_/g, "-");
 
     function cyrb128(str) {
         let h1 = 1779033703, h2 = 3144134277,
@@ -252,15 +284,16 @@ on("ready", () => {
             const seed = cyrb128(state.QuestCrawl.config.seed)
             rng = mulberry32(seed[0])
         } else {
-            const kernel = Math.random()
+            const kernel = generateUUID()
             const seed = cyrb128(kernel)
             rng = mulberry32(seed[0])
-            log(`seed: ${kernel}`)
+            log(`seed: ${seed[0]}:${kernel}`)
         }
     }
 
     function endTurn() {
-        state.QuestCrawl.grid = grid.toJSON()
+        state.QuestCrawl.day += 1;
+        state.QuestCrawl.grid = grid.toJSON();
     }
 
     const processInlinerolls = (msg) => {
@@ -500,6 +533,23 @@ on("ready", () => {
         }
     }
 
+    function getCharacterId(player) {
+        const {players} = state.QuestCrawl;
+        if (players.length > 0) {
+            return players.find(p => p.player === player.id).character
+        } else {        
+            return null
+        }
+    }
+
+    function getCharacterItems(characterId) {
+        return filterObjs(function(obj) {
+            if(obj.get("type") === 'attribute' && obj.get('characterid') === characterId &&
+                 obj.get('name').indexOf('repeating_inventory') > -1 && obj.get('name').indexOf('_name') > -1) return true;
+            else return false;
+        }).map(w => w.get('current'));
+    }
+
     function getCardsFromDeck(deckid) {
         return findObjs({type: 'card', deckid}).sort((a, b) => {
             const aname = a.get('name');
@@ -516,11 +566,136 @@ on("ready", () => {
         }).map(x => x.id);
     }
 
+    function getCharacterJSON(player) {
+        const id = getCharacterId(player)
+        const items = getCharacterItems(id)
+        const suit1 = getAttrByName(id, 'first_suit')
+        const suit2 = getAttrByName(id, 'second_suit')
+        const name = getAttrByName(id, 'character_name')
+        const treasure = parseInt(getAttrByName(id, 'treasure'), 10)
+        const treasure_max = parseInt(getAttrByName(id, 'max_treasure'), 10)
+        const injuries = parseInt(getAttrByName(id, 'injuries'), 10)
+        const injuries_max = parseInt(getAttrByName(id, 'max_injuries'), 10)
+        const supplies = parseInt(getAttrByName(id, 'supplies'), 10)
+        const supplies_max = parseInt(getAttrByName(id, 'max_supplies'), 10)
+        const inventory_max = parseInt(getAttrByName(id, 'max_inventory'), 10)
+
+        return {
+            id,
+            items,
+            suit1,
+            suit2,
+            name,
+            treasure,
+            treasure_max,
+            injuries,
+            injuries_max,
+            supplies,
+            supplies_max,
+            inventory_max
+        }
+    }
+
+    const items = {
+        "supplies": {},
+        "compass": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_fantasy_compass_on_a_wooden_table_torche_lit_and_glea_aa851deb-9d34-42dc-b8ae-97831b480c0c.png",
+            name: "Compass",
+            description: "Bonus on Hard Lands. A lifesaver for small Parties."
+        },
+        "mountaineering-gear": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_mountaineering_gear_dwarf_made._75336b64-0b69-43db-8913-5a8cde6a3afb.png",
+            name: "Mountaineering Gear",
+            description: "Bonus on Mountains."
+        },
+        "survival-kit": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_survival_kit_fantasy_39a9ab0f-666b-494d-95d1-214facd45f85.png",
+            name: "Survival Kit",
+            description: "Bonus on Crises."
+        },
+        "map": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_treasure_map_on_parchment_f58680e5-7efd-414c-883f-553bf2d05a15.png",
+            name: "Map",
+            description: "Discard to roll a die. Flip that many distant Territories that are connected."
+        },
+        "healing-herb": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_healing_herbs_bundle_7158ff24-d8b8-41ea-b7cd-58b9523cd9c6.png",
+            name: "Healing Herb",
+            description: "Discard to remove 1 Injury."
+        },
+        "rabbits-foot": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_rabbit_foot_amulet_5e2e7cbb-a57b-49c6-a812-29481ecbc7f5.png",
+            name: "Rabbit's Foot",
+            description: "Discard to reroll a die."
+        },
+        "magic-sword": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_a_magical_long_sword_91157dc7-9259-4aaa-a148-7d5e33e20eb5.png",
+            name: "Magic Sword",
+            description: "Bonus against Terrible Beasties and Factions. Name your blade!"
+        },
+        "enchanted-shield": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_enchanted_shield_b6acd85e-6f61-4d9d-9b8b-97eda4635d51.png",
+            name: "Enchanted Shield",
+            description: "When adding Injuries from Terrible Beasties, Megabeasts, or Factions, roll a die. On a 4, 5, or 6, prevent 1 Injury."
+        },
+        "elven-cloak": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_elven_cloak_da20729f-0d43-41b2-8a00-92760b36e2e9.png",
+            name: "Elven Cloak",
+            description: "Bonus against Megabeasts."
+        },
+        "bottomless-bag": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_bottomless_bag_magical_bag_of_holding_402157bb-adfe-489b-861e-7fe2febfecd8.png",
+            name: "Bottomless Bag",
+            description: "Character has nine Inventory Slots and can carry up to 9 Treasures and 30 Supplies."
+        },
+        "book-of-spells": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_spellbook_0d1e3e19-9094-47e1-9a41-155c6216e698.png",
+            name: "Book of Spells",
+            description: "Add 1 Injury to give another Character a Bonus. Use this before they roll, once per turn. Describe your spell."
+        },
+        "holy-rod": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_holy_rod_66c3df33-5404-41ea-a162-58e5b0662d0a.png",
+            name: "Holy Rod",
+            description: "Bonus on any Territory connected to a Quest. Add 1 Injury to remove 1 Injury from another Character."
+        },
+        "dwarven-tunnel-passport": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/11/watcherdm_dwarven_tunnel_passport_183f402e-c33f-4d7f-a82f-600979e84d61.png",
+            name: "Dwarven Tunnel Passport",
+            description: "The Party may move from Mountain to Mountain across any distance."
+        },
+        "ancient-knowledge": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_ancient_knowledge_of_the_elves_001c78f5-1b1b-40bf-98b0-2a54bce1cc28.png",
+            name: "Ancient Knowledge",
+            description: "The Party gains a Bonus on Good Lands; rolling doubles on Good Lands finds Healing Herbs."
+        },
+        "weapon-of-legend": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_weapon_of_legend_e4a44098-28c3-4587-90dd-25e82ca24ff1.png",
+            name: "Weapon of Legend",
+            description: "Bonus against Terrible Beasties, Factions, and the End Beast."
+        },
+        "vault-key": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/11/watcherdm_vault_key_b0d4749e-23d9-4c49-98bb-8b021a6e1caa.png",
+            name: "Vault Key",
+            description: "Opens the Vault."
+        },
+        "orb-of-chaos": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_orb_ofchaos_2aa03cf6-55e7-4502-a6f5-1f442aa0faf8.png",
+            name: "Orb of Chaos",
+            description: "Discard to shuffle and redeal the whole Island."
+        },
+        "pocket-pirate-ship": {
+            img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_a_pirate_ship_sailing_in_a_storm_inside_a_windowed_fl_e33511a9-541e-436f-9b46-a1f934059b2b.png",
+            name: "Pocket Pirate Ship",
+            description: "The Party may skip across one-card gaps in the Island while moving."
+        },
+        "elf_supplies": {}
+    }
+
     on("chat:message", (msg) => {
         if ( 'api' !== msg.type || !/^!questcrawl\b/i.test(msg.content)) {
             return
         }
-
+        const {mode} = state.QuestCrawl.config;
         let player = getObj('player', msg.playerid);
         let who = (player || {get:()=>'API'}).get('_displayname');
 
@@ -533,10 +708,31 @@ on("ready", () => {
             detectGameState()
         }
 
-        if(args.find(n=>/^config(\b|$)/i.test(n))){
+        if(args.find(n=>/^confirm(\b|$)/i.test(n))) {
             const params = args.slice(2).reduce((m, x) => {
                 const [key, value] = x.split(' ')
                 m[key] = value;
+                return m;
+            }, {})
+            state.QuestCrawl.players = state.QuestCrawl.players.filter((p) => p.id === params.player)
+
+            state.QuestCrawl.players.push(params)
+            const character = getCharacterJSON(player)
+            sendChat('QuestCrawl', `/w ${who} You are playing: <b>[${character.name}](http://journal.roll20.net/character/${character.id})</b>`)
+            return
+        }
+
+        if(args.find(n=>/^character(\b|$)/i.test(n))) {
+            const character = getCharacterJSON(player)
+            log(character)
+            sendChat('QuestCrawl', `/w ${who} You are playing: <b>[${character.name}](http://journal.roll20.net/character/${character.id})</b>`)
+            return
+        }
+
+        if(args.find(n=>/^config(\b|$)/i.test(n))){
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value || !state.QuestCrawl.config[key];
                 return m;
             }, {})
             if (Object.keys(params).length === 0) {
@@ -599,26 +795,15 @@ on("ready", () => {
                         sendChat('QuestCrawl', `/w ${who} 
                             <h3>Confirm Your Character</h3>
                             <p>You are currently playing:<br/>
-                                ${c.map(x => `<h4>[${x.get('name')}](http://journal.roll20.net/character/${x.id})</h4> (you can click this link to access the character sheet for editing.)</p><hr/> [Confirm](!questcrawl --confirm --player ${p.id} --character ${x.id})`).join('\n')}
+                                ${c.map(x => `<h4>[${x.get('name')}](http://journal.roll20.net/character/${x.id})</h4> (you can click this link to access the character sheet for editing.)</p> [Play ${x.get('name')}](!questcrawl --confirm --player ${p.id} --character ${x.id}) <hr/>`).join('\n')}
                             </p>`)
-                        log(c)
+                        sendChat('QuestCrawl', `/w ${who} or [Create A new Character](!questcrawl --create)`);
                     }
                 }
             })
             return
         }
         
-        if(args.find(n=>/^confirm(\b|$)/i.test(n))) {
-            const params = args.slice(2).reduce((m, x) => {
-                const [key, value] = x.split(' ')
-                m[key] = value;
-                return m;
-            }, {})
-            state.QuestCrawl.players = state.QuestCrawl.players.filter((p) => p.id === params.player)
-
-            state.QuestCrawl.players.push(params)
-            return
-        }
 
         if(args.find(n=>/^create(\b|$)/i.test(n))) {
             const name = `${who}'s QuestCrawl Character`;
@@ -627,6 +812,10 @@ on("ready", () => {
                 inplayerjournals: "all",
                 controlledby: player.id
             })
+            state.QuestCrawl.players = state.QuestCrawl.players.filter((p) => p.id === player.id)
+
+            state.QuestCrawl.players.push({player: player.id, character: character.id})
+
             sendChat('QuestCrawl', `/w ${who} [${name}](http://journal.roll20.net/character/${character.id}) Created, Click to Edit`);
             return
         }
@@ -634,6 +823,50 @@ on("ready", () => {
 
         if(args.find(n=>/^help(\b|$)/i.test(n))){
             showHelp(who);
+            return;
+        }
+
+        if(args.find(n=>/^buy(\b|$)/i.test(n))){
+            const {players} = state.QuestCrawl;
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = parseInt(value);
+                return m;
+            }, {})
+            const character = getCharacterJSON(player)
+            log(character)
+            log(params)
+            if (character.treasure < params.cost) {
+                sendChat(`${params.cost === 4 ? 'Rogueish ' : ''}Shop Keep`, `/w ${who} You can't afford that right now, sorry.`)
+            } else if (character.items.length >= character.inventory_max) {
+                sendChat(`${params.cost === 4 ? 'Rogueish ' : ''}Shop Keep`, `/w ${who} You can't carry any more items.`)
+            } else {
+                const rowid = `repeating_inventory_${generateRowID()}_item`
+                const key = Object.keys(items)[params.item - 1]
+                createObj('attribute', {
+                    name: `${rowid}`,
+                    characterid: character.id,
+                    current: key,
+                }, {silent: true});
+                createObj('attribute', {
+                    name: `${rowid}_img`,
+                    characterid: character.id,
+                    current: items[key].img,
+                }, {silent: true});
+                createObj('attribute', {
+                    name: `${rowid}_effect`,
+                    characterid: character.id,
+                    current: items[key].description,
+                }, {silent: true});
+                createObj('attribute', {
+                    name: `${rowid}_name`,
+                    characterid: character.id,
+                    current: items[key].name,
+                }, {silent: true});
+                setAttrs(character.id, {
+                    treasure: character.treasure - params.cost
+                }, {silent: true});
+            }
             return;
         }
 
@@ -645,7 +878,8 @@ on("ready", () => {
             }, {})
             const dir = args[1].split(' ')[1]
             const {x, y} = params
-            const ccPropMap = [
+
+            let ccPropMap = [
                 {y: 1},
                 {x: -1},
                 {x: -1},
@@ -655,7 +889,7 @@ on("ready", () => {
                 {x: 1},
                 {y: -1}
             ]
-            const cPropMap = [
+            let cPropMap = [
                 {x: 1},
                 {x: 1},
                 {y: 1},
@@ -665,9 +899,28 @@ on("ready", () => {
                 {x: -1},
                 {x: -1}
             ]
+            if (mode === 'hexagon') {
+                ccPropMap = [
+                    {x: -0.5, y: 1},
+                    {x: -1},
+                    {x: 0.5, y: 1},
+                    {x: -0.5, y: -1},
+                    {x: 1},
+                    {x: 0.5, y: -1},
+                ]
+                cPropMap = [
+                    {x: -0.5, y: 1},
+                    {x: -1},
+                    {x: 0.5, y: 1},
+                    {x: -0.5, y: -1},
+                    {x: 1},
+                    {x: 0.5, y: -1},
+                ]
+    
+            }
+            const pyramid = grid.get({x: parseFloat(x, 10), y: parseFloat(y, 10)})
             if (dir === "cc") {
                 log(`${dir} twist counterclockwise`)
-                const pyramid = grid.get({x, y})
                 pyramid.getAllNeighbors().map((n) => {
                     return grid.get(n)
                 }).forEach((ncard, i) => {
@@ -677,17 +930,20 @@ on("ready", () => {
                         grid.move(ncard, {x, y})
                         const g = getObj('graphic', ncard.id)
                         if (g) {
-                            g.set({
-                                left: offset + (x * cardSize) + (cardSize / 2),
-                                top: offset + (y * cardSize) + (cardSize / 2)
-                            })
+                            if (mode === 'original') {
+                                g.set({
+                                    left: offset + (x * cardSize),
+                                    top: offset + (y * cardSize)
+                                })
+                            } else {
+                                
+                            }
                         }
                     }
                 })
                 state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
             } else if (dir === 'c') {
                 log(`${dir} twist clockwise`)
-                const pyramid = grid.get({x, y})
                 pyramid.getAllNeighbors().map((n) => {
                     return grid.get(n)
                 }).forEach((ncard, i) => {
@@ -695,10 +951,15 @@ on("ready", () => {
                         const x = ncard.x + (cPropMap[i].x || 0);
                         const y = ncard.y + (cPropMap[i].y || 0)
                         grid.move(ncard, {x, y})
-                        getObj('graphic', ncard.id).set({
-                            left: offset + (x * cardSize) + (cardSize / 2),
-                            top: offset + (y * cardSize) + (cardSize / 2)
-                        })
+                        const g = getObj('graphic', ncard.id)
+                        if (g) {
+                            if (mode === 'original') {
+                                g.set({
+                                    left: offset + (x * cardSize),
+                                    top: offset + (y * cardSize)
+                                })
+                            }
+                        }
                     }
                 })
                 state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
@@ -774,7 +1035,7 @@ on("ready", () => {
         }
         
         let currentMagicItem = null;
-        
+
         const magicItems = [
             {
                 id: 8,
@@ -810,9 +1071,9 @@ on("ready", () => {
                 return m;
             }, {})
             if (params.type === 'magic') {
-                sendChat('QuestCrawl', `/w ${who} 
+                sendChat('Rogueish Shop Keep', `/w ${who} 
                     ${magicItems.map((m) => {
-                        return `[Buy 1 ${m.name}: 4 Treasure](!questcrawl --buy --item ${m.id} --from thieves)`;
+                        return `[Buy 1 ${m.name}: 4 Treasure](!questcrawl --buy --item ${m.id} --cost 4)`;
                     }).join('\n')}
                 `);
                 
@@ -820,15 +1081,15 @@ on("ready", () => {
                 if (currentMagicItem === null) {
                     currentMagicItem = magicItems[Math.floor(rng() * (magicItems.length - 1))]
                 }
-                sendChat('QuestCrawl', `/w ${who} 
-                    [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1)
-                    [Buy 1 Compass: 1 Treasure](!questcrawl --buy --item 2)
-                    [Buy 1 Mountaineering Gear: 1 Treasure](!questcrawl --buy --item 3)
-                    [Buy 1 Survival Kit: 1 Treasure](!questcrawl --buy --item 4)
-                    [Buy 1 Map: 1 Treasure](!questcrawl --buy --item 5)
-                    [Buy 1 Healing Herb: 1 Treasure](!questcrawl --buy --item 6)
-                    [Buy 1 Rabbit's Foot: 1 Treasure](!questcrawl --buy --item 7)
-                    [Buy 1 ${currentMagicItem.name}: 3 Treasure](!questcrawl --buy --item ${currentMagicItem.id})`);
+                sendChat('Shop Keep', `/w ${who} 
+                    [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1 --cost 1)
+                    [Buy 1 Compass: 1 Treasure](!questcrawl --buy --item 2 --cost 1)
+                    [Buy 1 Mountaineering Gear: 1 Treasure](!questcrawl --buy --item 3 --cost 1)
+                    [Buy 1 Survival Kit: 1 Treasure](!questcrawl --buy --item 4 --cost 1)
+                    [Buy 1 Map: 1 Treasure](!questcrawl --buy --item 5 --cost 1)
+                    [Buy 1 Healing Herb: 1 Treasure](!questcrawl --buy --item 6 --cost 1)
+                    [Buy 1 Rabbit's Foot: 1 Treasure](!questcrawl --buy --item 7 --cost 1)
+                    [Buy 1 ${currentMagicItem.name}: 3 Treasure](!questcrawl --buy --item ${currentMagicItem.id} --cost 3)`);
             }
             return;
         }
