@@ -404,8 +404,6 @@ on("ready", () => {
                     current: character.supplies - (1 + character.injuries)
                 });
             } else {
-                log(supplies)
-                log(injuries)
                 supplies.setWithWorker({
                     current: 0
                 });
@@ -1107,6 +1105,115 @@ on("ready", () => {
                 dice.push('1d6')
                 params.source.push('weapon-of-legend')
                 params.source.push('magic-sword')
+                commands.push(`[Weapon of Legend and Magic Sword Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
+            }
+            sendChat('QuestCrawl', `/w ${who} ${commands.join('<br/>')}`)
+            return
+        }
+        
+        if(args.find(n=>/^forage(\b|$)/i.test(n))) {
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
+            let max = 6;
+            let offset = 0;
+            const character = getCharacterJSON(player);
+            if ([character.suit1, character.suit2].indexOf(params.suit) !== -1) {
+                max += 5;
+                offset += 1;
+            }
+            if ((state.QuestCrawl.artifacts || {}).ancient_knowledge) {
+                max += 5;
+                offset += 1;
+            }
+            result = randomInteger(max) + offset
+            if (result >= parseInt(params.challenge, 10)) {
+                sendChat('QuestCrawl', `/w ${who} You rolled [[${result}]] and were able to successfully forage ${result} supplies today!`)
+                setAttrs(character.id, {
+                    supplies: character.supplies + result
+                });
+            } else {
+                sendChat('QuestCrawl', `/w ${who} You rolled [[${result}]] and failed to collect any supplies today.`)
+            }
+            return
+        }
+
+        if(args.find(n=>/^beastie(\b|$)/i.test(n))) {
+            const character = getCharacterJSON(player);
+            const params = args.slice(2).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = value;
+                return m;
+            }, {})
+            if (params.result) {
+                const source = params.source.split('|')
+                const outcome = params.result.split('|').map(x => parseInt(x, 10)).reduce((m, r, i) => {
+                    m.result += r;
+                    if (r === 1) {
+                        m.b.push(source[i])
+                    }
+                    return m;
+                }, {result: 0, b: []})
+                if (outcome.result >= parseInt(params.challenge)) {
+                    sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and have defeated the terrible beastie! You have collect 1 treasure. [Roll to Loot](!questcrawl --loot)`)
+                    setAttrs(character.id, {
+                        treasure: character.treasure + 1
+                    });
+                } else {
+                    if (character.items.indexOf('Enchanted Shield') > -1) {
+                        const shield = randomInteger(6);
+                        if (shield > 3) {
+                            sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] but your Enchanted Shield protected you!`)
+                        } else {
+                            sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and your Enchanted Shield failed you! Take 1 injury.`)
+                            setAttrs(character.id, {
+                                injuries: character.injuries + 1
+                            });
+                        }
+                    } else {
+                        sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]]! Take 1 injury.`)
+                        setAttrs(character.id, {
+                            injuries: character.injuries + 1
+                        });
+                    }
+                }
+                log(outcome)
+                return
+            }
+            log(params)
+            let max = 6;
+            let offset = 0;
+            let dice = ['1d6']
+            params.source = ['hero']
+            const commands = []
+            let label = 'Regular Attack '
+            if ([character.suit1, character.suit2].indexOf(params.suit) !== -1) {
+                dice.push('1d6')
+                params.source.push('suit')
+                label += '(with Suit Bonus) '
+            }
+            commands.push(`[${label} ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
+            if (character.items.indexOf('Magic Sword') > -1) {
+                dice.push('1d6')
+                params.source.push('magic_sword')
+                commands.push(`[Magic Sword Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
+                dice.pop()
+                params.source.pop()
+            }
+            if (character.items.indexOf('Weapon of Legend') > -1) {
+                dice.push('1d6')
+                params.source.push('weapon_of_legend')
+                commands.push(`[Weapon of Legend Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
+                dice.pop()
+                params.source.pop()
+            }
+            if (character.items.indexOf('Magic Sword') > -1 && character.items.indexOf('Weapon of Legend') > -1) {
+                dice.push('1d6')
+                dice.push('1d6')
+                params.source.push('weapon_of_legend')
+                params.source.push('magic_sword')
                 commands.push(`[Weapon of Legend and Magic Sword Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
             }
             sendChat('QuestCrawl', `/w ${who} ${commands.join('<br/>')}`)
