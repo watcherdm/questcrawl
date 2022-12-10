@@ -217,10 +217,64 @@ on("ready", () => {
         'Six of Spades': (card) => {
             return `[Forage for Supplies](!questcrawl --forage --suit spades --challenge 6)`;
         },
+        'Seven of Hearts': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit hearts --challenge 7)`;
+        },
+        'Seven of Diamonds': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit diamonds --challenge 7)`;
+        },
+        'Seven of Clubs': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit clubs --challenge 7)`;
+        },
+        'Seven of Spades': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit spades --challenge 7)`;
+        },
+        'Eight of Hearts': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit hearts --challenge 8)`;
+        },
+        'Eight of Diamonds': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit diamonds --challenge 8)`;
+        },
+        'Eight of Clubs': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit clubs --challenge 8)`;
+        },
+        'Eight of Spades': (card) => {
+            return `[Guide the Party](!questcrawl --hardlands --suit spades --challenge 8)`;
+        },
+        'Nine of Hearts': (card) => {
+            return `[Guide the Party](!questcrawl --crisis --suit hearts --challenge 9)`;
+        },
+        'Nine of Diamonds': (card) => {
+            return `[Guide the Party](!questcrawl --crisis --suit diamonds --challenge 9)`;
+        },
+        'Nine of Clubs': (card) => {
+            return `[Guide the Party](!questcrawl --crisis --suit clubs --challenge 9)`;
+        },
+        'Nine of Spades': (card) => {
+            return `[Guide the Party](!questcrawl --crisis --suit spades --challenge 9)`;
+        },
+        'Ten of Hearts': (card) => {
+            return `[Evade the Megabeast](!questcrawl --megabeast --suit hearts --challenge 10)`;
+        },
+        'Ten of Diamonds': (card) => {
+            return `[Evade the Megabeast](!questcrawl --crisis --suit diamonds --challenge 9)`;
+        },
+        'Ten of Clubs': (card) => {
+            return `[Evade the Megabeast](!questcrawl --crisis --suit clubs --challenge 9)`;
+        },
+        'Ten of Spades': (card) => {
+            return `[Evade the Megabeast](!questcrawl --crisis --suit spades --challenge 9)`;
+        },
+        'Jack of Hearts': (card) => {
+            return `[Collect 20 Supplies](!questcrawl --buy --item 21 --cost 0)`;
+        },
+        'Jack of Diamonds': (card) => {
+            return `[Investigate the Vault](!questcrawl --vault)`;
+        },
         'Jack of Clubs': (card) => {
             return `
                 [Farseeing: 1 Treasure](!questcrawl --map 3) 
-                [Heal the Party: 3 Treasure](!questcrawl --heal)`
+                [Heal the Party: 3 Treasure](!questcrawl --heal 0 --cost 3)`;
         },
         'Jack of Spades': (card) => {
             return `
@@ -228,7 +282,7 @@ on("ready", () => {
                 [Activate Clockwise](!questcrawl --twist c --x ${card.x} --y ${card.y})`
         },
         'Red Joker': (card) => {
-            return `[Shop](!questcrawl --shop)`
+            return `[Shop](!questcrawl --shop) [Heal 3 Injuries: 1 Treasure](!questcrawl --heal 1 --cost 1)`
         },
         'Black Joker': (card) => {
             if ((state.QuestCrawl.factions || {}).city_of_thieves === 2) {
@@ -673,6 +727,7 @@ on("ready", () => {
         const injuries_max = parseInt(getAttrByName(id, 'max_injuries'), 10)
         const supplies = parseInt(getAttrByName(id, 'supplies'), 10)
         const supplies_max = parseInt(getAttrByName(id, 'max_supplies'), 10)
+        const inventory = parseInt(getAttrByName(id, 'inventory'), 10)
         const inventory_max = parseInt(getAttrByName(id, 'max_inventory'), 10)
 
         return {
@@ -687,6 +742,7 @@ on("ready", () => {
             injuries_max,
             supplies,
             supplies_max,
+            inventory,
             inventory_max
         }
     }
@@ -1114,6 +1170,40 @@ on("ready", () => {
             return
         }
         
+        if(args.find(n=>/^heal(\b|$)/i.test(n))){
+            const params = args.slice(1).reduce((m, x) => {
+                const [key, value] = x.split(' ')
+                m[key] = parseInt(value, 10);
+                return m;
+            }, {})
+            const {players} = state.QuestCrawl
+            const character = getCharacterJSON(player)
+            if (character.treasure < params.cost) {
+                sendChat('QuestCrawl', `/w ${who} You cannot afford this service.`)
+            } else {
+                if (params.heal === 0) {
+                    // heal entire party
+                    Object.values(players).forEach((characterid) => {
+                        const attrs = {
+                            injuries: 0
+                        };
+                        if (characterid === character.id) {
+                            attrs.treasure = Math.max(0, character.treasure - params.cost)
+                        }
+                        setAttrs(characterid, attrs)
+                    })
+                    sendChat('QuestCrawl', `${character.name} has paid to heal the party.`)
+                } else {
+                    // heal individual
+                    setAttrs({
+                        injuries: Math.max(0, character.injuries - params.heal),
+                        treasure: Math.max(0, character.treasure - params.cost)
+                    })
+                    sendChat('QuestCrawl', `/w ${who} You have been healed of ${params.heal} injuries`)
+                }
+            }
+            return;
+        }
 
         if(args.find(n=>/^help(\b|$)/i.test(n))){
             showHelp(who);
@@ -1129,49 +1219,57 @@ on("ready", () => {
             const character = getCharacterJSON(player)
             if (character.treasure < params.cost) {
                 sendChat(`${params.cost === 4 ? 'Rogueish ' : ''}Shop Keep`, `/w ${who} You can't afford that right now, sorry.`)
-            } else if (character.items.length >= character.inventory_max) {
-                sendChat(`${params.cost === 4 ? 'Rogueish ' : ''}Shop Keep`, `/w ${who} You can't carry any more items.`)
-            } else {
-                if (params.item === 1 || params.item === 20) {
-                    const supplyAmount = params.item === 20 ? 12 : 10;
-                    if (character.supplies >= character.supplies_max) {
-                        sendChat('QuestCrawl', `/w ${who} You are already carrying all the supplies you can.`)
-                        return;
-                    }
-                    setAttrs(character.id, {
-                        supplies: Math.min(character.supplies_max, character.supplies + supplyAmount),
-                        treasure: Math.max(character.treasure - 1, 0)
-                    });
-                    sendChat('QuestCrawl', `/w ${who} <h3>${supplyAmount} Supplies were added to your character!</h3>`)
-                    return
-                }
-                const rowid = `repeating_inventory_${generateRowID()}_item`
-                const key = Object.keys(items)[params.item - 1]
-                createObj('attribute', {
-                    name: `${rowid}`,
-                    characterid: character.id,
-                    current: key,
-                }, {silent: true});
-                createObj('attribute', {
-                    name: `${rowid}_img`,
-                    characterid: character.id,
-                    current: items[key].img,
-                }, {silent: true});
-                createObj('attribute', {
-                    name: `${rowid}_effect`,
-                    characterid: character.id,
-                    current: items[key].description,
-                }, {silent: true});
-                createObj('attribute', {
-                    name: `${rowid}_name`,
-                    characterid: character.id,
-                    current: items[key].name,
-                }, {silent: true});
-                setAttrs(character.id, {
-                    treasure: character.treasure - params.cost
-                }, {silent: true});
-                sendChat('QuestCrawl', `/w ${who} <h3>${items[key].name} was added to your inventory!</h3>`)
+                return
             }
+            if ([1,20,21].indexOf(params.item) !== -1) {
+                const sAmounts = {
+                    1: 10,
+                    20: 12,
+                    21: 20
+                };
+                const supplyAmount = sAmounts[params.item];
+                if (character.supplies >= character.supplies_max) {
+                    sendChat('QuestCrawl', `/w ${who} You are already carrying all the supplies you can.`)
+                    return;
+                }
+                setAttrs(character.id, {
+                    supplies: Math.min(character.supplies_max, character.supplies + supplyAmount),
+                    treasure: Math.max(character.treasure - 1, 0)
+                });
+                sendChat('QuestCrawl', `/w ${who} <h3>${supplyAmount} Supplies were added to your character!</h3>`)
+                return
+            }
+            if (character.inventory + 1 >= character.inventory_max) {
+                sendChat(`${params.cost === 4 ? 'Rogueish ' : ''}Shop Keep`, `/w ${who} You can't carry any more items.`)
+                return
+            }
+            const rowid = `repeating_inventory_${generateRowID()}_item`
+            const key = Object.keys(items)[params.item - 1]
+            createObj('attribute', {
+                name: `${rowid}`,
+                characterid: character.id,
+                current: key,
+            }, {silent: true});
+            createObj('attribute', {
+                name: `${rowid}_img`,
+                characterid: character.id,
+                current: items[key].img,
+            }, {silent: true});
+            createObj('attribute', {
+                name: `${rowid}_effect`,
+                characterid: character.id,
+                current: items[key].description,
+            }, {silent: true});
+            createObj('attribute', {
+                name: `${rowid}_name`,
+                characterid: character.id,
+                current: items[key].name,
+            }, {silent: true});
+            setAttrs(character.id, {
+                inventory: character.inventory + 1,
+                treasure: character.treasure - params.cost
+            }, {silent: true});
+            sendChat('QuestCrawl', `/w ${who} <h3>${items[key].name} was added to your inventory!</h3>`)
             return;
         }
 
