@@ -1157,20 +1157,24 @@ on("ready", () => {
                     return m;
                 }, {result: 0, b: []})
                 if (outcome.result >= parseInt(params.challenge)) {
-                    sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and have defeated the terrible beastie! You have collect 1 treasure. [Roll to Loot](!questcrawl --loot)`)
+                    const treasureMessage = character.treasure === character.treasure_max ? 'You cannot carry anymore [[Treasure]]!' : 'You have collected 1 [[Treasure]].'
+                    sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and have defeated the terrible beastie! ${treasureMessage} [Roll to Loot](!questcrawl --loot)`)
                     setAttrs(character.id, {
-                        treasure: character.treasure + 1
+                        treasure: Math.min(character.treasure_max, character.treasure + 1)
                     });
                 } else {
                     if (character.items.indexOf('Enchanted Shield') > -1) {
                         const shield = randomInteger(6);
                         if (shield > 3) {
-                            sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] but your Enchanted Shield protected you!`)
+                            sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] but your [[Enchanted Shield]] [[${shield}]] protected you!`)
                         } else {
-                            sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and your Enchanted Shield failed you! Take 1 injury.`)
+                            sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and your [[Enchanted Shield]] [[${shield}]] failed you! Taking 1 [[Injury]].`)
                             setAttrs(character.id, {
                                 injuries: character.injuries + 1
                             });
+                            if (shield === 1) {
+                                outcome.b.push('enchanted-shield')
+                            }
                         }
                     } else {
                         sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]]! Take 1 injury.`)
@@ -1178,6 +1182,13 @@ on("ready", () => {
                             injuries: character.injuries + 1
                         });
                     }
+                }
+                if (outcome.b.length > 0) {
+                    outcome.b.forEach((b) => {
+                        if (['enchanted-shield', 'magic-sword'].indexOf(b) > -1) {
+                            sendChat('QuestCrawl', `/w ${who} You broke your [[${items[b].name}]], open your character sheet and discard it.`)
+                        }
+                    })
                 }
                 log(outcome)
                 return
@@ -1197,14 +1208,14 @@ on("ready", () => {
             commands.push(`[${label} ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
             if (character.items.indexOf('Magic Sword') > -1) {
                 dice.push('1d6')
-                params.source.push('magic_sword')
+                params.source.push('magic-sword')
                 commands.push(`[Magic Sword Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
                 dice.pop()
                 params.source.pop()
             }
             if (character.items.indexOf('Weapon of Legend') > -1) {
                 dice.push('1d6')
-                params.source.push('weapon_of_legend')
+                params.source.push('weapon-of-legend')
                 commands.push(`[Weapon of Legend Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
                 dice.pop()
                 params.source.pop()
@@ -1212,8 +1223,8 @@ on("ready", () => {
             if (character.items.indexOf('Magic Sword') > -1 && character.items.indexOf('Weapon of Legend') > -1) {
                 dice.push('1d6')
                 dice.push('1d6')
-                params.source.push('weapon_of_legend')
-                params.source.push('magic_sword')
+                params.source.push('weapon-of-legend')
+                params.source.push('magic-sword')
                 commands.push(`[Weapon of Legend and Magic Sword Attack ${dice.length}d6]${getBeastieCommandArgs(params,dice)}`)
             }
             sendChat('QuestCrawl', `/w ${who} ${commands.join('<br/>')}`)
