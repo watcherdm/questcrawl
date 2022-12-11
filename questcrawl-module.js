@@ -189,13 +189,13 @@ on("ready", () => {
             return `[Evade the Megabeast](!questcrawl --megabeast --suit hearts --challenge 10)`;
         },
         'Ten of Diamonds': (card) => {
-            return `[Evade the Megabeast](!questcrawl --megabeast --suit diamonds --challenge 9)`;
+            return `[Evade the Megabeast](!questcrawl --megabeast --suit diamonds --challenge 10)`;
         },
         'Ten of Clubs': (card) => {
-            return `[Evade the Megabeast](!questcrawl --megabeast --suit clubs --challenge 9)`;
+            return `[Evade the Megabeast](!questcrawl --megabeast --suit clubs --challenge 10)`;
         },
         'Ten of Spades': (card) => {
-            return `[Evade the Megabeast](!questcrawl --megabeast --suit spades --challenge 9)`;
+            return `[Evade the Megabeast](!questcrawl --megabeast --suit spades --challenge 10)`;
         },
         'Jack of Hearts': (card) => {
             return `[Collect 20 Supplies](!questcrawl --buy --item 21 --cost 0)`;
@@ -317,7 +317,7 @@ on("ready", () => {
             state.QuestCrawl.factions = {};
         }
         if (!state.QuestCrawl.history) {
-            state.QuestCrawl.history.push(coord) = [];
+            state.QuestCrawl.history = [];
         }
         state.QuestCrawl.currentChampion = null;
     }
@@ -506,15 +506,13 @@ on("ready", () => {
             }
             if (mode === 'original') {
                 playCardToTable(this.cardid, {
-                    left: offset + (this.x * this.cardSize),
-                    top: offset + (this.y * this.cardSize),
+                    ...toScreenGrid(this, this.cardSize),
                     layer: 'map',
                     currentSide: this.faceup ? 0 : 1
                 });
             } else if (mode === 'hexagon') {
                 playCardToTable(this.cardid, {
-                    left: hOffset + (this.x * this.cardSize.w),
-                    top: vOffset + (this.y * offsets.y),
+                    ...toScreenHex(this, this.cardSize),
                     layer: 'map',
                     currentSide: this.faceup ? 0 : 1
                 });
@@ -538,8 +536,42 @@ on("ready", () => {
                 faceup: this.faceup
             }
         },
+        flip: function(remote = false) {
+            this.faceup = !this.faceup
+            const gra = getObj('graphic', this.id)
+            
+            if (!gra) {
+                log('unable to flip card')
+                return
+            }
+            const side = (gra.get('currentSide') + 1) % 2
+            gra.set({
+                currentSide: side,
+                imgsrc: decodeURIComponent(gra.get('sides').split('|')[side].replace('med.png', 'thumb.png'))
+            })
+            if (remote) {
+                const card = getObj('card', this.cardid);
+                if (card.get('name').indexOf('Nine')) {
+                    setTimeout(card.flip.bind(card), 5000)
+                }
+            }
+        },
         makeBlank: function() {
             this.blank = true;
+        }
+    }
+
+    function toScreenGrid({x, y}, cardSize) {
+        return {
+            left: offset + (x * cardSize),
+            top: offset + (y * cardSize)
+        }
+    }
+
+    function toScreenHex({x, y}, cardSize) {
+        return {
+            left: hOffset + (x * cardSize.w),
+            top: vOffset + (y * offsets.y)
         }
     }
 
@@ -867,12 +899,12 @@ on("ready", () => {
         }
     }
 
-    function getChallengeCommandArgs(challenge, params, dice) {
-        return `(!questcrawl --${challenge} --suit ${params.suit} --challenge ${params.challenge} --result ${dice.map(d => `&#91;[${d}]&#93;`).join("|")} --source ${params.source.join('|')})`
+    function getChallengeCommandArgs(challenge, params, output) {
+        return `(!questcrawl --${challenge} --suit ${params.suit} --challenge ${params.challenge} --result ${output.dice.map(d => `&#91;[${d}]&#93;`).join("|")} --source ${output.source.join('|')})`
     }
 
-    function getBeastieCommandArgs(params, dice) {
-        return getChallengeCommandArgs('beastie', params, dice);
+    function getBeastieCommandArgs(params, output) {
+        return getChallengeCommandArgs('beastie', params, output);
     }
 
     function parseOutcome(params) {
@@ -920,23 +952,25 @@ on("ready", () => {
         state.QuestCrawl.tokenid = obj.id
         const left = parseInt(obj.get("left"), 10)
         const top = parseInt(obj.get("top"), 10)
-        log({id: obj.id, top, left})
         const coord = toCoords(left, top)
-        log(coord)
         const card = grid.get(coord)
         if (!card.cardid) {
             return
         }
-        if (!card.faceup) {
-            card.faceup = true
-            const gra = getObj('graphic', card.id)
-            if (!gra) {
-                return
+        if (state.QuestCrawl.preventMove) {
+            const {history, config} = state.QuestCrawl;
+            const {mode} = config;
+            const lastPos = history[history.length - 1];
+            let screenPos = toScreenGrid(lastPos, card.cardSize);
+            if (mode === 'hexagon') {
+                screenPos = toScreenHex(lastPos, card.cardSize);
             }
-            gra.set({
-                currentSide: 0,
-                imgsrc: decodeURIComponent(gra.get('sides').split('|')[0].replace('med.png', 'thumb.png'))
-            })
+            obj.set(screenPos)
+            sendChat('QuestCrawl', 'Your party is lost in the wilderness, you must complete the challenge to leave.');
+            return;
+        }
+        if (!card.faceup) {
+            card.flip()
         }
         const data = getObj('card', card.cardid)
         let name = data.get('name')
@@ -1016,6 +1050,7 @@ on("ready", () => {
                         state.QuestCrawl.day = 0;
                         state.QuestCrawl.evil = 0;
                         state.QuestCrawl.currentChampion = 0;
+                        state.QuestCrawl.history = [];
                         updateTracker()
                     }, 100)
                 }, 100)
@@ -1120,53 +1155,32 @@ on("ready", () => {
 
     }
 
+    function itemBonus(itemKey, character, output) {
+        const {name} = items[itemKey]
+        if (character.items.indexOf(name) === -1) {
+            return
+        }
+        output.dice.push('1d6')
+        output.source.push(itemKey)
+        output.label += `, with ${name}`;
+    }
+
     function beastie(character, who, args) {
         const params = getParams(args, 2)
         if (params.result) {
             return beastieResult(character, who, params)
         }
-        let dice = ['1d6']
-        params.source = ['hero']
+        const output = {
+            dice: ['1d6'],
+            source: ['hero'],
+            label: 'Regular Attack'
+        }
         const commands = [`Challenge ${params.challenge}`]
-        let label = 'Regular Attack '
-        if ([character.suit1, character.suit2].indexOf(params.suit) !== -1) {
-            dice.push('1d6')
-            params.source.push('suit')
-            label += '(with Suit Bonus) '
-        }
-        if (character.items.indexOf('Magic Sword') > -1) {
-            dice.push('1d6')
-            params.source.push('magic-sword')
-            label += ', with Magic Sword Attack'
-        }
-        if (character.items.indexOf('Weapon of Legend') > -1) {
-            dice.push('1d6')
-            params.source.push('weapon-of-legend')
-            label += ', with Weapon of Legend'
-        }
-        if (character.items.indexOf('Holy Rod') !== -1) {
-            const token = getPartyToken();
-            const left = parseInt(token.get('left'), 10)
-            const top = parseInt(token.get('top'), 10)
-            const coords = toCoords(left, top);
-            const card = grid.get(coords)
-            const nearQuest = card.getAllNeighbors().some((n) => {
-                const x = grid.get(n)
-                if (!x.faceup) {
-                    return false;
-                }
-                const c = getObj('card', x.cardid)
-                if (c.get('name').indexOf('Queen') === 0) {
-                    return true
-                }
-            })
-            if (nearQuest) {
-                dice.push('1d6');
-                params.source.push('holy-rod');
-                label += ', with Holy Rod'
-            }
-        }
-        commands.push(`[${label} ${dice.length}d6]${getBeastieCommandArgs(params, dice)}`)
+        suitBonus(character, params, output)
+        itemBonus('magic-sword', character, output)
+        itemBonus('weapon-on-legend', character, output)
+        holyRodBonus(character, output)
+        commands.push(`[${output.label} ${output.dice.length}d6]${getBeastieCommandArgs(params, output)}`)
         sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
 
     }
@@ -1439,56 +1453,57 @@ on("ready", () => {
         state.QuestCrawl.grid = grid.toJSON();    
     }
 
-    function crisis(character, who, args) {
-        const token = getPartyToken();
-        const left = parseInt(token.get('left'), 10)
-        const top = parseInt(token.get('top'), 10)
-        const coords = toCoords(left, top);
-        const card = grid.get(coords)
-
-        const params = Object.assign({ source: ['hero'] }, getParams(args, 2));
+    function canBecomeChampion(who, character) {
         const {currentChampion} = state.QuestCrawl;
         if (currentChampion == null) {
             state.QuestCrawl.currentChampion = character.id
             sendChat('QuestCrawl', `/w ${who} You have taken up the Champion Challenge!`);
+            return true
         } else if (character.id !== currentChampion) {
             sendChat('QuestCrawl', `/w ${who} Another party member is currently guiding your party.`)
-            return
+            return false
         } else {
             sendChat('QuestCrawl', `/w ${who} You are currently the party Champion.`)
+            return true
         }
-        if (params.result) {
-            const outcome = parseOutcome(params)
-            const challenge = parseInt(params.challenge, 10)
-            if (challenge > outcome.result) {
-                sendChat('QuestCrawl', `<h2 style='color: red;'>Safety could not be found, despite ${who}'s effort (${outcome.result}). Everyone takes 1 injury.</h2>`)
-                getParty().forEach(c => {
-                    setAttrs(c.id, {
-                        injuries: Math.min(c.injuries + 1, c.injuries_max)
-                    });
-                });
-                // add an injury to each party member, need a consistent way to get all party members
-            } else {
-                sendChat('QuestCrawl', `<h2>${who} leads everyone safely through the crisis (${outcome.result}).</h2>`)
-            }
-            state.QuestCrawl.currentChampion = null
-            card.makeBlank()
+    }
+
+    function injureParty(amount) {
+        getParty().forEach(c => {
+            setAttrs(c.id, {
+                injuries: Math.min(c.injuries + amount, c.injuries_max)
+            });
+        });
+    }
+
+    function crisisResult(character, params) {
+        const {history} = state.QuestCrawl
+        const card = grid.get(history[history.length -1])
+        const outcome = parseOutcome(params)
+        const challenge = parseInt(params.challenge, 10)
+        state.QuestCrawl.currentChampion = null
+        card.makeBlank()
+        if (challenge > outcome.result) {
+            injureParty(1)
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Safety could not be found, despite ${character.name}'s effort (${outcome.result}). Everyone takes 1 injury.</h2>`)
             return
         }
-        const dice =['1d6'];
-        const commands = [`Challenge ${params.challenge}`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
-        let label = 'Regular Attack '
+        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely through the crisis (${outcome.result}).</h2>`)
+    }
+
+    function suitBonus(character, params, output) {
         if ([character.suit1, character.suit2].indexOf(params.suit) !== -1) {
-            dice.push('1d6')
-            params.source.push('suit')
-            label += '(with Suit Bonus) '
+            output.dice.push('1d6')
+            output.source.push('suit')
+            output.label += '(with Suit Bonus) '
         }
-        if (character.items.indexOf('Survival Kit') !== -1) {
-            dice.push('1d6')
-            params.source.push('survival-kit')
-            label += ', using Survival Kit';
-        }
+    }
+
+    function holyRodBonus(character, output) {
         if (character.items.indexOf('Holy Rod') !== -1) {
+            const {history} = state.QuestCrawl
+            const card = grid.get(history[history.length -1])
+
             const nearQuest = card.getAllNeighbors().some((n) => {
                 const x = grid.get(n)
                 if (!x.faceup) {
@@ -1500,13 +1515,113 @@ on("ready", () => {
                 }
             })
             if (nearQuest) {
-                dice.push('1d6');
-                params.source.push('holy-rod');
-                label += ', using Holy Rod'
+                output.dice.push('1d6');
+                output.source.push('holy-rod');
+                output.label += ', using Holy Rod'
             }
         }
-        commands.push(`[${label} ${dice.length}d6]${getChallengeCommandArgs('crisis', params, dice)}`)
+    }
+
+    function crisis(character, who, args) {
+
+        const params = getParams(args, 2);
+        if (!canBecomeChampion(who, character)) {
+            return;
+        }
+        if (params.result) {
+            return crisisResult(character, params);
+        }
+        const output = {
+            dice: ['1d6'],
+            source: ['hero'],
+            label: 'Regular Attempt'
+        }
+        const commands = [`Challenge ${params.challenge}`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
+        suitBonus(character, params, output);
+        itemBonus('survival-kit', character, output)
+        holyRodBonus(character, output);
+        commands.push(`[${output.label} ${output.dice.length}d6]${getChallengeCommandArgs('crisis', params, output)}`)
         sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party to safety. ${commands.join(' ')}`)    
+    }
+
+    function climbResult(character, params) {
+        const {history, config} = state.QuestCrawl;
+        const {mode} = config;
+        const card = grid.get(history[history.length -1])
+        const outcome = parseOutcome(params)
+        const challenge = parseInt(params.challenge, 10)
+        state.QuestCrawl.currentChampion = null
+        if (challenge > outcome.result) {
+            // move the party token, back to the previous tile
+            const origin = history[history.length - 2]
+            let screenPos = toScreenGrid(origin, card.cardSize)
+            if (mode === 'hexagon') {
+                screenPos = toScreenHex(origin, card.cardSize)
+            }
+            getPartyToken().set(screenPos)
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party was unable to scale the reaches, despite ${character.name}'s effort (${outcome.result}). You return to where you left from.</h2>`)
+            return
+        }
+        card.getAllNeighbors().forEach(c => c.flip(true))
+        sendChat('QuestCrawl', `<h2>${character.name} leads everyone up the mountain (${outcome.result}).</h2>`)
+        if (card.get('name').indexOf('Spades') !== -1) {
+            sendChat('QuestCrawl', `/w ${who} At the peak of the mountain you find a [Magic Item](!questcrawl --buy --item &#91;[1d6+7]&#93; --cost 0)`)
+        }
+    }
+
+    function climb(character, who, args) {
+        const params = getParams(args, 2);
+        params.challenge = 5;
+        if (!canBecomeChampion(who, character)) {
+            return
+        }
+        const commands = [`Challenge ${params.challenge}`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
+        if (params.result) {
+            return climbResult(character, params);
+        }
+        const output = {
+            dice: ['1d6'],
+            source: ['hero'],
+            label: 'Regular Ascent'
+        };
+        itemBonus('mountaineering-gear', character, output);
+        holyRodBonus(character, output);
+        commands.push(`[${output.label} ${output.dice.length}d6]${getChallengeCommandArgs('climb', params, output)}`)
+        sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party up the mountain. ${commands.join(' ')}`)
+    }
+
+    function hardlandsResult(character, params) {
+        const outcome = parseOutcome(params)
+        const challenge = parseInt(params.challenge, 10)
+        state.QuestCrawl.currentChampion = null
+        if (challenge > outcome.result) {
+            state.QuestCrawl.preventMove = true
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has become lost in the hard lands, despite ${character.name}'s effort (${outcome.result}). End the turn and try again tomorrow.</h2>`)
+            return
+        }
+        state.QuestCrawl.preventMove = false
+        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the hard lands (${outcome.result}). End the turn and move tomorrow.</h2>`)
+    }
+
+    function hardlands(character, who, args) {
+        const params = getParams(args, 2);
+        if (!canBecomeChampion(who, character)) {
+            return
+        }
+        const commands = [`Challenge ${params.challenge}`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
+        if (params.result) {
+            return hardlandsResult(character, params);
+        }
+        const output = {
+            dice: ['1d6'],
+            source: ['hero'],
+            label: 'Regular Guidance'
+        };
+        suitBonus(character, params, output);
+        itemBonus('compass', character, output);
+        holyRodBonus(character, output);
+        commands.push(`[${output.label} ${output.dice.length}d6]${getChallengeCommandArgs('hardlands', params, output)}`)
+        sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party out of these hardlands. ${commands.join(' ')}`)
     }
 
     on("chat:message", (msg) => {
@@ -1614,6 +1729,10 @@ on("ready", () => {
             return shop(who, args);
         }
 
+        if(args.find(n=>/^climb(\b|$)/i.test(n))){
+            return climb(character, who, args);
+        }
+    
         sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
     });
 
