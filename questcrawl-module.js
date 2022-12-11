@@ -77,6 +77,18 @@ on("ready", () => {
     }
     
     const commands = {
+        'Ace of Hearts': (card) => {
+            return `[Climb the Mountain](!questcrawl --climb)`;
+        },
+        'Ace of Diamonds': (card) => {
+            return `[Climb the Mountain](!questcrawl --climb)`;
+        },
+        'Ace of Clubs': (card) => {
+            return `[Climb the Mountain](!questcrawl --climb)`;
+        },
+        'Ace of Spades': (card) => {
+            return `[Climb the Mountain](!questcrawl --climb)`;
+        },
         'Two of Hearts': (card) => {
             return `[Forage for Supplies](!questcrawl --forage --suit hearts --challenge 2)`;
         },
@@ -214,9 +226,9 @@ on("ready", () => {
         'King of Hearts': (card) => {
             const comms = []
             if ((state.QuestCrawl.factions || {}).dwarves === 1) {
-                comms.push('[Continue Fighting the Dwarves](!questcrawl --challengefaction dwarves)')
+                comms.push('[Continue Fighting the Dwarves](!questcrawl --beastie --suit hearts --challenge 8 --type faction)')
             } else {
-                comms.push('[Fight the Dwarves](!questcrawl --beastie --suit hearts --challenge 8)')
+                comms.push('[Fight the Dwarves](!questcrawl --beastie --suit hearts --challenge 8 --type faction)')
                 comms.push('[Buy 1 Enchanted Shield: 3 Treasure](!questcrawl --buy --item 9)')
                 if ((state.QuestCrawl.artifacts || {}).dwarven_tunnel_passport) {
                     comms.push('[Take the Tunnels: Use Passport!](!questcrawl --tunnel)')
@@ -288,12 +300,14 @@ on("ready", () => {
                     mode: 'original'
                 },
                 currentState: 0,
+                currentChampion: null,
                 grid: [],
                 day: 0,
                 players: {},
                 characters: [],
                 count: 0,
-                factions: {}
+                factions: {},
+                history: []
             }
         }
         if (Array.isArray(state.QuestCrawl.players)) {
@@ -302,6 +316,10 @@ on("ready", () => {
         if (!state.QuestCrawl.factions) {
             state.QuestCrawl.factions = {};
         }
+        if (!state.QuestCrawl.history) {
+            state.QuestCrawl.history.push(coord) = [];
+        }
+        state.QuestCrawl.currentChampion = null;
     }
 
     resetConfig()
@@ -404,13 +422,14 @@ on("ready", () => {
 
     const sendError = (who, msg) => sendChat('QuestCrawl',`/w "${who}" ${msg}`);
 
-    function QuestCrawlCard({x, y, id, cardid, faceup}) {
+    function QuestCrawlCard({x, y, id, cardid, faceup, blank = false}) {
         const {mode} = state.QuestCrawl.config;
         this.x = x
         this.y = y
         this.id = id
         this.cardid = cardid
         this.faceup = faceup
+        this.blank = blank
 
 
         if (mode === 'original') {
@@ -518,6 +537,9 @@ on("ready", () => {
                 id: this.id,
                 faceup: this.faceup
             }
+        },
+        makeBlank: function() {
+            this.blank = true;
         }
     }
 
@@ -917,7 +939,19 @@ on("ready", () => {
             })
         }
         const data = getObj('card', card.cardid)
-        const handout = findObjs({type: 'handout', name: data.get('name')})[0]
+        let name = data.get('name')
+        if (card.blank) {
+            sendChat('QuestCrawl', 'Random Encounter!')
+            const randomEncounter = randomInteger(6)
+            if (randomEncounter < 4) {
+                name = name.replace(/^\w+(\sof\s\w+)/, 'Two$1')
+            } else if (randomEncounter < 6) {
+                name = name.replace(/^\w+(\sof\s\w+)/, 'Five$1')
+            } else {
+                name = name.replace(/^\w+(\sof\s\w+)/, 'Nine$1')
+            }
+        }
+        const handout = findObjs({type: 'handout', name: name})[0]
         handout.get("notes", (note) => {
             sendChat('QuestCrawl',`<div>
                 <img src="${handout.get('avatar')}"/>
@@ -926,6 +960,7 @@ on("ready", () => {
                 <p>${getCommand(data.get('name'), card)}</p>
             </div>`);
         })
+        state.QuestCrawl.history.push(coord)
         state.QuestCrawl.currentMagicItem = null;
     }
 
@@ -978,7 +1013,9 @@ on("ready", () => {
                         grid = new Grid()
                         placed = []
                         open = []
-                        state.QuestCrawl.day = 0
+                        state.QuestCrawl.day = 0;
+                        state.QuestCrawl.evil = 0;
+                        state.QuestCrawl.currentChampion = 0;
                         updateTracker()
                     }, 100)
                 }, 100)
@@ -1403,6 +1440,12 @@ on("ready", () => {
     }
 
     function crisis(character, who, args) {
+        const token = getPartyToken();
+        const left = parseInt(token.get('left'), 10)
+        const top = parseInt(token.get('top'), 10)
+        const coords = toCoords(left, top);
+        const card = grid.get(coords)
+
         const params = Object.assign({ source: ['hero'] }, getParams(args, 2));
         const {currentChampion} = state.QuestCrawl;
         if (currentChampion == null) {
@@ -1419,11 +1462,17 @@ on("ready", () => {
             const challenge = parseInt(params.challenge, 10)
             if (challenge > outcome.result) {
                 sendChat('QuestCrawl', `<h2 style='color: red;'>Safety could not be found, despite ${who}'s effort (${outcome.result}). Everyone takes 1 injury.</h2>`)
+                getParty().forEach(c => {
+                    setAttrs(c.id, {
+                        injuries: Math.min(c.injuries + 1, c.injuries_max)
+                    });
+                });
                 // add an injury to each party member, need a consistent way to get all party members
             } else {
                 sendChat('QuestCrawl', `<h2>${who} leads everyone safely through the crisis (${outcome.result}).</h2>`)
             }
-            log(outcome)
+            state.QuestCrawl.currentChampion = null
+            card.makeBlank()
             return
         }
         const dice =['1d6'];
@@ -1440,11 +1489,6 @@ on("ready", () => {
             label += ', using Survival Kit';
         }
         if (character.items.indexOf('Holy Rod') !== -1) {
-            const token = getPartyToken();
-            const left = parseInt(token.get('left'), 10)
-            const top = parseInt(token.get('top'), 10)
-            const coords = toCoords(left, top);
-            const card = grid.get(coords)
             const nearQuest = card.getAllNeighbors().some((n) => {
                 const x = grid.get(n)
                 if (!x.faceup) {
