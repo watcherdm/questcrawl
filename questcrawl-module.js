@@ -1,7 +1,8 @@
 "use strict";
 
 on("ready", () => {
-    let rng = Math.random;    
+    let rng = Math.random;
+    let sharedReward = null;
     let cardSize = 70;
     let offset = 1085;
     const vOffset = 847;
@@ -44,14 +45,23 @@ on("ready", () => {
     })();
     
     function makeMacros() {
-        const macro = findObjs({type: 'macro', name: 'End Turn'})[0]
-        if (!macro) {
+        const endTurnMacro = findObjs({type: 'macro', name: 'End-Turn'})[0]
+        if (!endTurnMacro) {
             createObj('macro', {
                 name: 'End Turn',
                 action: '!questcrawl --endturn',
                 visibleto: ["all"],
                 istokenaction: true
-            })    
+            })
+        }
+        const characterMacro = findObjs({type: 'macro', name: 'Character'})[0]
+        if (!characterMacro) {
+            createObj('macro', {
+                name: 'End Turn',
+                action: '!questcrawl --endturn',
+                visibleto: ["all"],
+                istokenaction: true
+            })
         }
     }
 
@@ -255,7 +265,7 @@ on("ready", () => {
                 } else if ((state.QuestCrawl.factions || {}).elves === 2) {
                     comms.push('[Claim Dwarven Tunnel Passport](!questcrawl --claimartifact 3)')
                 } else {
-                    comms.push('[Take the Tunnels: 1 Treasure](!questcrawl --tunnel)')
+                    comms.push('[Take the Tunnels: 1 Treasure](!questcrawl --tunnel --cost 1)')
                 }
             }
             return comms.join('\n')
@@ -292,10 +302,7 @@ on("ready", () => {
             // setup traps around here
             const comms = []
             const {evil} = state.QuestCrawl
-            if ((state.QuestCrawl.factions || {}).unearthed_evil === 2) {
-            
-                
-            } if ((state.QuestCrawl.factions || {}).unearthed_evil === 1) {
+            if ((state.QuestCrawl.factions || {}).unearthed_evil === 1) {
                 comms.push(`[Continue Fighting the Unearthed Evil](!questcrawl --beastie --suit spades --challenge ${12 - (evil || 0)} --type faction)`)
             } else {
                 comms.push(`[Fight the Unearthed Evil](!questcrawl --beastie --suit spades --challenge ${12 - (evil || 0)} --type faction)`)
@@ -338,6 +345,9 @@ on("ready", () => {
         }
         if (!state.QuestCrawl.history) {
             state.QuestCrawl.history = [];
+        }
+        if (!state.QuestCrawl.mountains) {
+            state.QuestCrawl.mountains = {};
         }
         state.QuestCrawl.currentChampion = null;
     }
@@ -413,6 +423,9 @@ on("ready", () => {
     function getOrCreateDayTracker() {
         log('adding day tracker object')
         let tracker = getObj('text', state.QuestCrawl.trackerid);
+        if (tracker.get('pageid') === Campaign().get('playerpageid')) {
+
+        }
         if (!tracker) {
             tracker = createObj('text', {
                 left: 200,
@@ -445,7 +458,6 @@ on("ready", () => {
         this.y = y
         this.id = id
         this.cardid = cardid
-        this.faceup = faceup
         this.blank = blank
 
 
@@ -469,6 +481,9 @@ on("ready", () => {
                 w: 75,
                 h: 88
             }
+        }
+        if (faceup) {
+            this.flip()
         }
     }
     
@@ -539,16 +554,23 @@ on("ready", () => {
                 log('unable to flip card')
                 return
             }
-            const side = (gra.get('currentSide') + 1) % 2
+            const side = this.faceup ? 0 : 1;
             gra.set({
                 currentSide: side,
                 imgsrc: decodeURIComponent(gra.get('sides').split('|')[side].replace('med.png', 'thumb.png'))
             })
+            this.faceup = side === 0;
+            const card = getObj('card', this.cardid);
+            const name = card.get('name')
             if (remote) {
-                const card = getObj('card', this.cardid);
-                if (card.get('name').indexOf('Nine') === 0) {
+                if (name.indexOf('Nine') === 0) {
+                    sendChat('QuestCrawl', `${name} is a Crisis, and will be returned to the face down position.`)
                     setTimeout(this.flip.bind(this), 3000)
                 }
+            }
+            if (name.indexOf('Ace') === 0) {
+                state.QuestCrawl.mountains = state.QuestCrawl.mountains || {};
+                state.QuestCrawl.mountains[name] = this;
             }
         },
         makeBlank: function() {
@@ -950,7 +972,7 @@ on("ready", () => {
                 const outcome = battlefield[character.id] = parseOutcome(params)
                 const party = getParty();
                 if (party.some(c => battlefield[c.id] === 0)) {
-                    sendChat('QuestCrawl', `/w ${who} You rolled a ${outcome.result} against the Dwarves. Waiting for others to finish battle.`)
+                    sendChat('QuestCrawl', `/w ${who} You rolled a ${renderOutcome(outcome)} against the Dwarves. Waiting for others to finish battle.`)
                     return
                 } else {
                     const victory = party.length / 2
@@ -965,7 +987,7 @@ on("ready", () => {
                                 injuries: Math.min(c.injuries + 1, c.injuries_max)
                             });
                         }
-                        return `${c.name} rolled ${battlefield[c.id].result}, ${isSuccess ? 'a success' : 'a failure'}.`
+                        return `${c.name} rolled ${renderOutcome(battlefield[c.id])}, ${isSuccess ? 'a success' : 'a failure'}.`
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
@@ -1000,7 +1022,7 @@ on("ready", () => {
                 const party = getParty();
                 if (party.some(c => battlefield[c.id] === 0)) {
                     log(battlefield)
-                    sendChat('QuestCrawl', `/w ${who} You rolled a ${outcome.result} against the Thieves. Waiting for others to finish battle.`)
+                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} against the Thieves. Waiting for others to finish battle.`)
                     return
                 } else {
                     const victory = party.length / 2
@@ -1015,7 +1037,7 @@ on("ready", () => {
                                 injuries: Math.min(c.injuries + 1, c.injuries_max)
                             });
                         }
-                        return `${c.name} rolled ${battlefield[c.id].result}, ${isSuccess ? 'a success' : 'a failure'}.`
+                        return `${c.name} rolled ${renderOutcome(battlefield[c.id])}, ${isSuccess ? 'a success' : 'a failure'}.`
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
@@ -1049,7 +1071,7 @@ on("ready", () => {
                 const outcome = battlefield[character.id] = parseOutcome(params)
                 const party = getParty();
                 if (party.some(c => battlefield[c.id] === 0)) {
-                    sendChat('QuestCrawl', `/w ${who} You rolled a ${outcome.result} against the Elves. Waiting for others to finish battle.`)
+                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} against the Elves. Waiting for others to finish battle.`)
                     return
                 } else {
                     const victory = party.length / 2
@@ -1064,7 +1086,7 @@ on("ready", () => {
                                 injuries: Math.min(c.injuries + 1, c.injuries_max)
                             });
                         }
-                        return `${c.name} rolled ${battlefield[c.id].result}, ${isSuccess ? 'a success' : 'a failure'}.`
+                        return `${c.name} rolled ${renderOutcome(battlefield[c.id])}, ${isSuccess ? 'a success' : 'a failure'}.`
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
@@ -1094,9 +1116,62 @@ on("ready", () => {
                 }
             },
             Spades: (character, who, card, params) => {
-                state.QuestCrawl.factions.unearthed_evil = 2
-                let treasure = 5
-                card.makeBlank()
+                const {battlefield} = state.QuestCrawl
+                const outcome = battlefield[character.id] = parseOutcome(params)
+                const party = getParty();
+                if (party.some(c => battlefield[c.id] === 0)) {
+                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} against the Unearthed Evil. Waiting for others to finish battle.`)
+                    return
+                } else {
+                    const victory = party.length / 2
+                    let successes = 0
+                    const battlereport = party.map(c => {
+                        const {result} = battlefield[c.id]
+                        const isSuccess = result >= params.challenge
+                        if (isSuccess) { 
+                            successes++ 
+                        } else {
+                            setAttrs(c.id, {
+                                injuries: Math.min(c.injuries + 1, c.injuries_max)
+                            });
+                        }
+                        return `${c.name} rolled ${renderOutcome(battlefield[c.id])}, ${isSuccess ? 'a success' : 'a failure'}.`
+                    });
+                    const won = successes >= victory;
+                    battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
+                    sendChat('QuestCrawl', `The battle with the Unearthed Evil is over. ${battlereport.join(' ')}`)
+                    if (won) {
+                        card.makeBlank()
+                        state.QuestCrawl.magicItem = function (character, who, item) {
+                            buy(character, who, ['questcrawl', 'buy', `item ${item}`, 'cost 0'])
+                            sendChat('QuestCrawl', `${character.name} has claimed the ${items[Object.keys(items)[item - 1]].name}`);
+                            state.QuestCrawl.magicItem = (lateCharacter, who, item) => {
+                                sendChat('QuestCrawl', `/w ${who} ${character.name} already claimed this magic item.`)
+                            }
+                        }
+                        state.QuestCrawl.vaultKey = function (character, who, item) {
+                            buy(character, who, ['questcrawl', 'buy', `item ${item}`, 'cost 0'])
+                            sendChat('QuestCrawl', `${character.name} has claimed the Vault Key`);
+                            state.QuestCrawl.vaultKey = (lateCharacter, who, item) => {
+                                sendChat('QuestCrawl', `/w ${who} ${character.name} already claimed the Vault Key.`)
+                            }
+                        }
+                        state.QuestCrawl.orbOfChaos = function (character, who, item) {
+                            buy(character, who, ['questcrawl', 'buy', `item ${item}`, 'cost 0'])
+                            sendChat('QuestCrawl', `${character.name} has claimed the Orb of Chaos`);
+                            state.QuestCrawl.orbOfChaos = (lateCharacter, who, item) => {
+                                sendChat('QuestCrawl', `/w ${who} ${character.name} already claimed the Orb of Chaos.`)
+                            }
+                        }
+                        // treasure handed out
+                        sendChat('QuestCrawl', '[Get a Random Magic Item](!questcrawl --claim magicItem --item &#91;[1d6+7]&#93;) [You Found a Vault Key](!questcrawl --claim vaultKey --item 17) [Claim the Orb of Chaos](!questcrawl --claim orbOfChaos --item 18)')
+                        state.QuestCrawl.factions.unearthed_evil = 2
+                    } else {
+                        sendChat('QuestCrawl', 'Your party has failed to defeat the Unearthed Evil, you have been chased off.')
+                    }
+                    state.QuestCrawl.battlefield = null;
+                    state.QuestCrawl.preventMove = false;
+                }
             }
         }
     }
@@ -1113,13 +1188,14 @@ on("ready", () => {
         const source = params.source.split('|')
         return params.result.split('|').map(x => parseInt(x, 10)).reduce((m, r, i) => {
             m.result += r;
+            m.rolls.push(r)
             m.vals[r] = m.vals[r] || 0
             m.vals[r]++;
             if (r === 1) {
                 m.b.push(source[i])
             }
             return m;
-        }, {result: 0, b: [], vals: {}})
+        }, {result: 0, rolls: [], b: [], vals: {}})
     }
 
     function getOnlinePlayers() {
@@ -1287,12 +1363,12 @@ on("ready", () => {
         const outcome = parseOutcome(params)
         const {result} = outcome
         if (result >= parseInt(params.challenge, 10)) {
-            sendChat('QuestCrawl', `/w ${who} You rolled [[${result}]] and were able to successfully forage ${result} supplies today!`)
+            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and were able to successfully forage ${result} supplies today!`)
             setAttrs(character.id, {
                 supplies: Math.min(character.supplies_max, character.supplies + result)
             });
         } else {
-            sendChat('QuestCrawl', `/w ${who} You rolled [[${result}]] and failed to collect any supplies today.`)
+            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and failed to collect any supplies today.`)
         }
         if (params.source.indexOf('ancient-knowledge') !== -1 && Object.values(outcome.vals).some(x => x > 1)) {
             sendChat('QuestCrawl', `/w ${who} The secrets of the Elves has lead you to discover Healing Herbs here. [Collect Healing Herbs](!questcrawl --buy --item 6 --cost 0)`)
@@ -1340,12 +1416,16 @@ on("ready", () => {
 
     }
 
+    function renderOutcome(outcome) {
+        return `${outcome.rolls.map(r => `[[${r}]]`).join('+')} = [[${outcome.result}]]`
+    }
+
     function beastieResult(character, who, params) {
         const outcome = parseOutcome(params)
         if (params.type !== 'faction') {
             if (outcome.result >= parseInt(params.challenge)) {
                 const treasureMessage = character.treasure === character.treasure_max ? 'You cannot carry anymore <em>Treasure</em>!' : 'You have collected 1 <em>Treasure</em>.'
-                sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and have defeated the <em>Terrible Beastie</em>! ${treasureMessage} [Roll to Loot](!questcrawl --loot &#91;[1d6]&#93;)`)
+                sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and have defeated the <em>Terrible Beastie</em>! ${treasureMessage} [Roll to Loot](!questcrawl --loot &#91;[1d6]&#93;)`)
                 setAttrs(character.id, {
                     treasure: Math.min(character.treasure_max, character.treasure + 1)
                 });    
@@ -1353,9 +1433,9 @@ on("ready", () => {
                 if (character.items.indexOf('Enchanted Shield') > -1) {
                     const shield = randomInteger(6);
                     if (shield > 3) {
-                        sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] but your <em>Enchanted Shield</em> [[${shield}]] protected you!`)
+                        sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} but your <em>Enchanted Shield</em> [[${shield}]] protected you!`)
                     } else {
-                        sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]] and your <em>Enchanted Shield</em> [[${shield}]] failed you! Taking 1 <em>Injury</em>.`)
+                        sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and your <em>Enchanted Shield</em> [[${shield}]] failed you! Taking 1 <em>Injury</em>.`)
                         setAttrs(character.id, {
                             injuries: character.injuries + 1
                         });
@@ -1364,7 +1444,7 @@ on("ready", () => {
                         }
                     }
                 } else {
-                    sendChat('QuestCrawl', `/w ${who} You rolled [[${outcome.result}]]! Take 1 injury.`)
+                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)}! Take 1 injury.`)
                     setAttrs(character.id, {
                         injuries: character.injuries + 1
                     });
@@ -1559,6 +1639,7 @@ on("ready", () => {
         }
         const rowid = `repeating_inventory_${generateRowID()}_item`
         const key = Object.keys(items)[params.item - 1]
+        log(key)
         createObj('attribute', {
             name: `${rowid}`,
             characterid: character.id,
@@ -1725,10 +1806,10 @@ on("ready", () => {
         card.makeBlank()
         if (challenge > outcome.result) {
             injureParty(1)
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Safety could not be found, despite ${character.name}'s effort (${outcome.result}). Everyone takes 1 injury.</h2>`)
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Safety could not be found, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). Everyone takes 1 injury.</h2>`)
             return
         }
-        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely through the crisis (${outcome.result}).</h2>`)
+        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely through the crisis, rolling ${renderOutcome(outcome)}.</h2>`)
     }
 
     function suitBonus(character, params, output) {
@@ -1799,7 +1880,7 @@ on("ready", () => {
             }
             getPartyToken().set(screenPos)
             state.QuestCrawl.history.push(origin)
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party was unable to scale the reaches, despite ${character.name}'s effort (${outcome.result}). You return to where you left from.</h2>`)
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party was unable to scale the reaches, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). You return to where you left from.</h2>`)
             return
         }
         card.getAllNeighbors().forEach(c => {
@@ -1812,7 +1893,7 @@ on("ready", () => {
                 }
             }
         })
-        sendChat('QuestCrawl', `<h2>${character.name} leads everyone up the mountain (${outcome.result}).</h2>`)
+        sendChat('QuestCrawl', `<h2>${character.name} leads everyone up the mountain, rolling (${renderOutcome(outcome)}).</h2>`)
         const c = getObj('card', card.cardid);
         if (c.get('name').indexOf('Spades') !== -1) {
             sendChat('QuestCrawl', `/w ${who} At the peak of the mountain you find a [Magic Item](!questcrawl --buy --item &#91;[1d6+7]&#93; --cost 0)`)
@@ -1846,11 +1927,11 @@ on("ready", () => {
         state.QuestCrawl.currentChampion = null
         if (challenge > outcome.result) {
             state.QuestCrawl.preventMove = () => { sendChat('QuestCrawl', 'Your party is lost in the wilderness. [Resend Chat](!questcrawl --look)') }
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has become lost in the hard lands, despite ${character.name}'s effort (${outcome.result}). End the turn and try again tomorrow.</h2>`)
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has become lost in the hard lands, despite ${character.name}'s effort (${renderOutcome(outcome)}). End the turn and try again tomorrow.</h2>`)
             return
         }
         state.QuestCrawl.preventMove = false
-        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the hard lands (${outcome.result}). End the turn and move tomorrow.</h2>`)
+        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the hard lands (${renderOutcome(outcome)}). End the turn and move tomorrow.</h2>`)
     }
 
     function hardlands(character, who, args) {
@@ -1879,7 +1960,7 @@ on("ready", () => {
         const challenge = parseInt(params.challenge, 10)
         state.QuestCrawl.currentChampion = null
         if (challenge > outcome.result) {
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has been found by the Megabeast, despite ${character.name}'s effort (${outcome.result}). Everyone takes 2 injuries!</h2>`)
+            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has been found by the Megabeast, despite ${character.name}'s effort (${renderOutcome(outcome)}). Everyone takes 2 injuries!</h2>`)
             getParty().forEach(c => setAttrs(c.id, {injuries: Math.min(c.injuries + 2, c.injuries_max)}))
             return
         }
@@ -1888,14 +1969,14 @@ on("ready", () => {
         const rest = history.slice(0,-1)
         const previouslyVisited = rest.find(({name}) => name === coord.name);
         if (previouslyVisited) {
-            sendChat('QuestCrawl', `<h2>${character.name} successfully leads everyone on a heist to rob the Megabeast's lair (${outcome.result}). You escape with 2 Treasure, 1 Random Magic Item, and 1 Weapon of Legend.</h2>`)
+            sendChat('QuestCrawl', `<h2>${character.name} successfully leads everyone on a heist to rob the Megabeast's lair (${renderOutcome(outcome)}). You escape with 2 Treasure, 1 Random Magic Item, and 1 Weapon of Legend.</h2>`)
             sendChat('QuestCrawl', `/w ${who} [Collect Random Magic Item](!questcrawl --buy --item &#91;[1d6+7]&#93; --cost 0) [Collect Weapon of Legend](!questcrawl --buy --item 16 --cost 0)`)
             setAttrs(character.id, {
                 treasure: Math.max(character.treasure + 2, character.treasure_max)
             });
             // you have robbed the megabeasts hoard, get some shit
         } else {
-            sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the Megabeast's lair (${outcome.result}). You have discovered it's hoard, next time you may steal from it.</h2>`)
+            sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the Megabeast's lair (${renderOutcome(outcome)}). You have discovered it's hoard, next time you may steal from it.</h2>`)
             // you have escaped without damage.
         }
     }
@@ -1919,6 +2000,46 @@ on("ready", () => {
         holyRodBonus(character, output);
         commands.push(`[${output.label} ${output.dice.length}d6]${getChallengeCommandArgs('megabeast', params, output)}`)
         sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party in your escape from the Megabeast. ${commands.join(' ')}`)
+    }
+
+    function claim(character, who, args) {
+        const params = getParams(args, 1);
+        const fn = state.QuestCrawl[params.claim]
+        if (!fn) {
+            sendChat('QuestCrawl', `Invalid claim attempted for ${params.claim}.`)
+            return;
+        }
+        return fn(character, who, params.item)
+    }
+
+    function tunnel(character, who, args) {
+        const params = getParams(args, 2);
+        const {mountains, config} = state.QuestCrawl;
+        const {mode} = config;
+        if (params.destination) {
+            if (params.cost > character.treasure) {
+                sendChat('QuestCrawl', `/w ${who} You cannot afford to travel the dwarven tunnels.`)
+                return;
+            }
+            const target = mountains[`Ace of ${params.destination}`]
+            const card = grid.get(target)
+            if (mode === 'original') {
+                getPartyToken().set(toScreenGrid(target, card.cardSize))
+            } else if (mode === 'hexagon') {
+                getPartyToken().set(toScreenHex(target, card.cardSize))
+            }
+            setAttrs(character.id, {
+                treasure: character.treasure - parseInt(params.cost, 10)
+            })
+            // move the party to the selected card
+            return
+        }
+        const commands = Object.keys(mountains).map((name) => {
+            return `[${name}](!questcrawl --tunnel --destination ${name.split(' ').pop()} --cost ${params.cost})`
+        })
+
+
+        sendChat('QuestCrawl', `Select your destination: ${commands.join(' ')}`)
     }
 
     on("chat:message", (msg) => {
@@ -2036,8 +2157,16 @@ on("ready", () => {
 
         if(args.find(n=>/^megabeast(\b|$)/i.test(n))){
             return megabeast(character, who, args);
-        }        
-    
+        }
+
+        if(args.find(n=>/^claim(\b|$)/i.test(n))){
+            return claim(character, who, args);
+        }
+
+        if(args.find(n=>/^tunnel(\b|$)/i.test(n))){
+            return tunnel(character, who, args);
+        }
+
         sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
     });
 

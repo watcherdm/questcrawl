@@ -27,18 +27,26 @@
     
     <div class="character">
         <div class="top">
-            <div class="col">
-                <img  name="attr_character_avatar"/>
-            </div>
-            <div class="col col-large">
+            <div class="sheet-col">
+                <div class="sheet-2colrow">
+                    <div class="sheet-col">
+                        <img class="avatar-image" name="attr_character_avatar"/>
+                    </div>
+                    <div class="sheet-col">
+                        <button class="btn level-up-btn" type="action" name="act_level_up">Level Up</button>
+                        <button class="btn complete-quest-btn" type="action" name="act_complete_quest">Complete Quest</button>
+                        <button class="btn" type="action" name="act_finish">Finish Turn (<input type="number" name="attr_CurrentSupplyCost" value="(1+@{injuries})" disabled="true"/>)</button>
+                    </div>
+                </div>
                 <input type="hidden" class="sheet-level-up-toggle" name="attr_max_injuries" value="5"/>
                 <input type="hidden" class="sheet-complete-quest-toggle" name="attr_level" value="0"/>
-                <button class="btn level-up-btn" type="action" name="act_level_up">Level Up</button>
-                <button class="btn complete-quest-btn" type="action" name="act_complete_quest">Complete Quest</button>
-                <button class="btn" type="action" name="act_finish">Finish Turn (<input type="number" name="attr_CurrentSupplyCost" value="(1+@{injuries})" disabled="true"/>)</button>
                 <div class="cell">
                     <span>Name:</span>
-                    <span type="text" name="attr_character_name"></span>
+                    <span name="attr_character_name"></span>
+                </div>
+                <div class="cell">
+                    <span>Age:</span>
+                    <span name="attr_days"></span> days.
                 </div>
                 <div class="cell">
                     <span>Suit:</span>
@@ -233,8 +241,6 @@
                 setAttrs({
                     "second_suit": suit
                 })
-            } else {
-                console.log(`unable to set ${suit} invalid state. LVL: ${level}, FS: ${first_suit}, SS: ${second_suit}`)
             }
         }
     }
@@ -254,16 +260,10 @@
     }
 
     const remove_supply = () => {
-        getAttrs(["supplies", "max_supplies"], ({supplies, max_supplies}) => {
-            if (parseInt(supplies, 10) - 1 >= 0) {
-                setAttrs({
-                    supplies: parseInt(supplies, 10) - 1
-                })
-            } else {
-                setAttrs({
-                    supplies: 0
-                })
-            }
+        getAttrs(["supplies"], ({supplies}) => {
+            setAttrs({
+                supplies: Math.max(toInt(supplies) - 1, 0)
+            })
         })
     }
 
@@ -275,6 +275,10 @@
             max_inventory: 5,
             mode: "play"
         })
+        getSectionIDs("inventory", (inventoryIds) => {
+            const itemIds = inventoryIds.map((x) => removeRepeatingRow(`repeating_inventory_${x}`))
+        })
+
     }
 
     const toInt = (x) => parseInt(x, 10)
@@ -405,64 +409,7 @@
         })
     }
 
-    on("clicked:add_supply", add_supply)
-    on("clicked:remove_supply", remove_supply)
-
-    on("clicked:add_treasure", add_treasure)
-    on("clicked:remove_treasure", remove_treasure)
-
-    const set_inventory_item = ({sourceAttribute}) => {
-        getAttrs([sourceAttribute], (result) => {
-            const item = result[sourceAttribute]
-            const toSet = {}
-            toSet[`${sourceAttribute}_img`] = items[item].img
-            toSet[`${sourceAttribute}_name`] = items[item].name
-            toSet[`${sourceAttribute}_effect`] = items[item].description
-            setAttrs(toSet)
-        })
-    }
-
-    on("change:max_supplies", clamp_supplies)
-    on("change:max_treasure", clamp_treasure)
-    on("change:max_inventory", clamp_inventory)
-
-    on("change:repeating_inventory", clamp_inventory)
-
-    on("change:repeating_inventory:item", set_inventory_item)
-    on("change:repeating_inventory:item", update_bag_space)
-
-    on("remove:repeating_inventory", clamp_inventory)
-
-    on("clicked:create", () => {
-        getAttrs(["first_suit", "second_suit", "level", "quest", "character_name"], ({first_suit, second_suit, level, quest, character_name}) => {
-            if (first_suit && quest && character_name && !second_suit && level == 0) {
-                setAttrs({
-                    "mode": "play",
-                    "level": 1
-                })
-            } else if (second_suit && character_name && level == 2) {
-                setAttrs({
-                    quest: `COMPLETE! ${quest}`,
-                    mode: "play"
-                })
-            } else {
-                console.log(`unable to create character, something is missing ${first_suit} ${quest} ${character_name}`)
-            }
-        })
-    })
-    on("clicked:heart", () => {
-        getAttrs(["first_suit", "second_suit", "level"], pickSuit("hearts"))
-    })
-    on("clicked:diamond", () => {
-        getAttrs(["first_suit", "second_suit", "level"], pickSuit("diamonds"))
-    })
-    on("clicked:spade", () => {
-        getAttrs(["first_suit", "second_suit", "level"], pickSuit("spades"))
-    })
-    on("clicked:club", () => {
-        getAttrs(["first_suit", "second_suit", "level"], pickSuit("clubs"))
-    })
-    on("clicked:finish", () => {
+    const end_turn = () => {
         getAttrs(["injuries", "supplies", "max_injuries", "days"], ({injuries, supplies, max_injuries, days}) => {
             const _injuries = parseInt(injuries, 10)
             const _supplies = parseInt(supplies, 10)
@@ -486,7 +433,74 @@
                 })                
             }
         })
+    };
+    
+    on("clicked:add_supply", add_supply)
+    on("clicked:remove_supply", remove_supply)
+
+    on("clicked:add_treasure", add_treasure)
+    on("clicked:remove_treasure", remove_treasure)
+
+    const set_inventory_item = ({sourceAttribute}) => {
+        getAttrs([sourceAttribute], (result) => {
+            const item = result[sourceAttribute]
+            if (!items[item]) {
+                return;
+            }
+            const toSet = {}
+            toSet[`${sourceAttribute}_img`] = items[item].img
+            toSet[`${sourceAttribute}_name`] = items[item].name
+            toSet[`${sourceAttribute}_effect`] = items[item].description
+            setAttrs(toSet)
+        })
+    }
+
+    on("clicked:repeating_inventory:discarditem", ({sourceAttribute}) => {
+        removeRepeatingRow(sourceAttribute.replace("_discarditem", ""))
+        clamp_inventory()
     })
+    on("change:supplies", clamp_supplies);
+    on("change:max_supplies", clamp_supplies)
+    on("change:treasure", clamp_treasure)
+    on("change:max_treasure", clamp_treasure)
+    on("change:inventory", clamp_inventory)
+    on("change:max_inventory", clamp_inventory)
+
+    on("change:repeating_inventory", clamp_inventory)
+    on("remove:repeating_inventory", clamp_inventory)
+
+    on("change:repeating_inventory:item", set_inventory_item)
+    on("change:repeating_inventory:item", update_bag_space)
+
+
+    on("clicked:create", () => {
+        getAttrs(["first_suit", "second_suit", "level", "quest", "character_name"], ({first_suit, second_suit, level, quest, character_name}) => {
+            if (first_suit && quest && character_name && !second_suit && level == 0) {
+                setAttrs({
+                    "mode": "play",
+                    "level": 1
+                })
+            } else if (second_suit && character_name && level == 2) {
+                setAttrs({
+                    quest: `COMPLETE! ${quest}`,
+                    mode: "play"
+                })
+            }
+        })
+    })
+    on("clicked:heart", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("hearts"))
+    })
+    on("clicked:diamond", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("diamonds"))
+    })
+    on("clicked:spade", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("spades"))
+    })
+    on("clicked:club", () => {
+        getAttrs(["first_suit", "second_suit", "level"], pickSuit("clubs"))
+    })
+    on("clicked:finish", end_turn)
     on("clicked:complete_quest", () => {
         setAttrs({
             level: 2,
@@ -494,18 +508,14 @@
         })
     })
     on("change:injuries", () => {
-        getAttrs(["level", "injuries"], ({level, injuries}) => {
-            if (4 + level <= injuries) {
+        console.log('injuries changed')
+        getAttrs(["max_injuries", "injuries"], ({max_injuries, injuries}) => {
+            if (toInt(max_injuries) <= toInt(injuries)) {
                 setAttrs({
                     status: "dead",
                     mode: "graveyard"
                 })
             }
         })
-    })
-
-    on("clicked:repeating_inventory:discarditem", ({sourceAttribute}) => {
-        removeRepeatingRow(sourceAttribute.replace("_discarditem", ""))
-        clamp_inventory()
     })
 </script>
