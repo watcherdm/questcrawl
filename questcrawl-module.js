@@ -2149,13 +2149,15 @@ on("ready", () => {
             //     characterid: character.id,
             //     current: items[key].name,
             // }, {silent: true});
-            // setAttrs(character.id, {
-            //     inventory: character.inventory + 1,
-            //     treasure: character.treasure - params.cost
-            // }, {silent: true});                
+            setAttrs(character.id, {
+                inventory: character.inventory + 1,
+                treasure: character.treasure - params.cost
+            });
 
             sendChat('QuestCrawl', `<h3>${character.name} added ${items[key].name} to their inventory!</h3>`)
-            sendChat('QuestCrawl', `/w ${who} ${itemCommands[key] ? itemCommands[key](character, rowKey) : ''}`)
+            if (itemCommands[key]) {
+                sendChat('QuestCrawl', `/w ${who} ${itemCommands[key](character, rowKey)}`)
+            }
         })
 
         item.setWithWorker({current: key})
@@ -2201,6 +2203,7 @@ on("ready", () => {
             }
         });
         state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
+        sendChat('QuestCrawl', `${character.name} has activated the twisting pyramid. The landscape shifts around you, the evil has become less powerful [${12 - state.QuestCrawl.evil}]!`)
         setAttrs(character.id, {
             treasure: Math.max(character.treasure - 1, 0)
         });    
@@ -2265,7 +2268,6 @@ on("ready", () => {
             i++;
             log(i)
         }
-        log('finished generation')
         grid.setup = false
         state.QuestCrawl.grid = grid.toJSON().map(c => c.toJSON());
     }
@@ -2274,7 +2276,7 @@ on("ready", () => {
         const {currentChampion} = state.QuestCrawl;
         if (currentChampion == null) {
             state.QuestCrawl.currentChampion = character.id
-            sendChat('QuestCrawl', `/w ${who} You have taken up the Champion Challenge!`);
+            sendChat('QuestCrawl', `${character.name} has taken up the Champion Challenge!`);
             return true
         } else if (character.id !== currentChampion) {
             sendChat('QuestCrawl', `/w ${who} Another party member is currently guiding your party.`)
@@ -2357,7 +2359,7 @@ on("ready", () => {
             source: ['hero'],
             label: 'Regular Attempt'
         }
-        const commands = [`Challenge ${params.challenge}`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
+        const commands = [`<h2>Challenge ${params.challenge}</h2>`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
         suitBonus(character, params, output);
         itemBonus('survival-kit', character, output)
         holyRodBonus(character, output);
@@ -2606,6 +2608,14 @@ on("ready", () => {
 
     }
 
+    function log(character, who, args) {
+        const logs = state.QuestCrawl.history.reduce((m, logEntry) => {
+            logEntry.events.filter(e => e.content.indexOf(character.name) > -1).forEach(e => m.push(e))
+            return m;
+        }, [])
+        sendChat('QuestCrawl', `<ol><li>${logs.join('</li><li>')}</li></ol>`)
+    }
+
     on("chat:message", (msg) => {
         const logEntry = (getLastLogEntry() || {});
         logEntry.events = logEntry.events || []
@@ -2776,6 +2786,10 @@ on("ready", () => {
             return clearchampion(character, who, args);
         }
 
+        if(args.find(n=>/^log(\b|$)/i.test(n))){
+            return log(character, who, args);
+        }
+        
         sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
     });
 
