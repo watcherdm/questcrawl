@@ -2608,9 +2608,9 @@ on("ready", () => {
 
     }
 
-    function log(character, who, args) {
+    function characterlog(character, who, args) {
         const logs = state.QuestCrawl.history.reduce((m, logEntry) => {
-            logEntry.events.filter(e => e.content.indexOf(character.name) > -1).forEach(e => m.push(e))
+            (logEntry.events || []).filter(e => (e.content || '').indexOf(character.name) > -1).forEach(e => m.push(e.content))
             return m;
         }, [])
         sendChat('QuestCrawl', `<ol><li>${logs.join('</li><li>')}</li></ol>`)
@@ -2787,7 +2787,7 @@ on("ready", () => {
         }
 
         if(args.find(n=>/^log(\b|$)/i.test(n))){
-            return log(character, who, args);
+            return characterlog(character, who, args);
         }
         
         sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
