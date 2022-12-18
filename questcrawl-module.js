@@ -1086,7 +1086,7 @@ on("ready", () => {
             return `[Reroll ${r}](${next} --removeitem ${getItemRowId(character, `Rabbit's Foot`)})`
         })
         commands.unshift(`[Keep All](${args.filter(a => a.indexOf('rabbitsfoot') !== 0).join(' --')})`)
-        sendChat('QuestCrawl', `/w ${who} Would you like to discard your Rabbit's Foot to reroll? ${commands.join(' ')}`)
+        sendChat('QuestCrawl', `/w ${who} Would you like to discard your Rabbit's Foot to reroll? ${commands.join(' ')} = [${rolls.reduce((m, n) => m + parseInt(n, 10), 0)}]`)
     }
 
     function rabbitsFoot(character, command, key='result') {
@@ -1352,12 +1352,12 @@ on("ready", () => {
                 handleFactionResult(character, who, card, params, outcome, key, name)
             },
             spades: (character, who, card, params, outcome) => {
-                const {battlefield} = state.QuestCrawl
-                battlefield[character.id] = outcome
+                const {battlefield} = state.QuestCrawl;
+                battlefield[character.id] = outcome;
                 const party = getParty();
                 if (party.some(c => battlefield[c.id] === 0)) {
-                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} against the Unearthed Evil. Waiting for others to finish battle.`)
-                    return
+                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} against the Unearthed Evil. Waiting for others to finish battle.`);
+                    return;
                 } else {
                     const victory = party.length / 2
                     let successes = 0
@@ -1375,7 +1375,7 @@ on("ready", () => {
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
-                    sendChat('QuestCrawl', `The battle with the Unearthed Evil is over. ${battlereport.join(' ')}`)
+                    sendChat('QuestCrawl', `<h3>The battle with the Unearthed Evil is over. ${battlereport.join(' ')}</h3>`)
                     if (won) {
                         card.makeBlank()
                         state.QuestCrawl.magicItem = function (character, who, item) {
@@ -1400,10 +1400,10 @@ on("ready", () => {
                             }
                         }
                         // treasure handed out
-                        sendChat('QuestCrawl', '[Get a Random Magic Item](!questcrawl --claim magicItem --item &#91;[1d6+7]&#93;) [You Found a Vault Key](!questcrawl --claim vaultKey --item 17) [Claim the Orb of Chaos](!questcrawl --claim orbOfChaos --item 18)')
-                        state.QuestCrawl.factions.unearthed_evil = 2
+                        sendChat('QuestCrawl', '[Claim a Random Magic Item](!questcrawl --claim magicItem --item &#91;[1d6+7]&#93;) [Claim the Vault Key](!questcrawl --claim vaultKey --item 17) [Claim the Orb of Chaos](!questcrawl --claim orbOfChaos --item 18)');
+                        state.QuestCrawl.factions.unearthed_evil = 2;
                     } else {
-                        sendChat('QuestCrawl', 'Your party has failed to defeat the Unearthed Evil, you have been chased off.')
+                        sendChat('QuestCrawl', '<h3 style="color: red;">Your party has failed to defeat the Unearthed Evil, you have been chased off.</h3>');
                     }
                     state.QuestCrawl.battlefield = null;
                     state.QuestCrawl.preventMove = false;
@@ -1433,12 +1433,12 @@ on("ready", () => {
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
-                    sendChat('QuestCrawl', `The battle with the End Beast is over. ${battlereport.join(' ')}`)
+                    sendChat('QuestCrawl', `<h3>The battle with the End Beast is over. ${battlereport.join(' ')}</h3>`)
                     if (won) {
                         state.QuestCrawl.factions.endbeast = 2
-                        sendChat('QuestCrawl', 'Your party has saved the realm! The End Beast is no more!')
+                        sendChat('QuestCrawl', '<h1>Your party has saved the realm! The End Beast is no more! GAME OVER!</h1>')
                     } else {
-                        sendChat('QuestCrawl', 'Your party has failed to defeat the End Beast this time. [Try Again!](!questcrawl --look)')
+                        sendChat('QuestCrawl', '<h3>Your party has failed to defeat the End Beast this time. [Try Again!](!questcrawl --look)</h3>')
                     }
                     state.QuestCrawl.battlefield = null;
                     state.QuestCrawl.preventMove = false;
@@ -1518,6 +1518,25 @@ on("ready", () => {
         return getParty().some(c => c.suit1 === card.suit)
     }
 
+    function getPirateReach(card) {
+        return card.getAllNeighbors().reduce((m, c) => {
+            if (c.id === 'Gap') {
+                c.getAllNeighbors().map((n) => {
+                    return n.cardid
+                }).forEach((id) => {
+                    if (m.indexOf(id) === -1 ) {
+                        m.push(id)
+                    }
+                })
+            } else {
+                if (m.indexOf(c.cardid) === -1 ) {
+                    m.push(c.cardid)
+                }
+            }
+            return m
+        }, [])
+    }
+    
     function onPartyMoved(grid, obj) {
         if (!grid.get({x: 0, y: 0}).id) {
             return sendChat('QuestCrawl', 'Game is not running, please click the Start macro for instructions.');
@@ -1527,33 +1546,18 @@ on("ready", () => {
         const top = parseInt(obj.get("top"), 10)
         const coord = toCoords(left, top)
         const logEntry = Object.assign({}, coord)
-        const {history, config} = state.QuestCrawl;
+        const {config} = state.QuestCrawl;
         let card = grid.get(coord)
-        if (!card.cardid || card.id === 'Gap') {
+        if (card.id === 'Gap') {
             const oldPrevent = state.QuestCrawl.preventMove
             state.QuestCrawl.preventMove = () => {
                 sendChat('QuestCrawl', 'You have attempted to move to an invalid location, returning to last location.');
                 state.QuestCrawl.preventMove = oldPrevent
             }
         }
-        let lastPos = history[history.length - 1];
+        let lastPos = getLastLogEntry();
         if (lastPos && card.getAllNeighbors) {
-            const pirateReach = card.getAllNeighbors().reduce((m, c) => {
-                if (c.id === 'Gap') {
-                    c.getAllNeighbors().map((n) => {
-                        return n.cardid
-                    }).forEach((id) => {
-                        if (m.indexOf(id) === -1 ) {
-                            m.push(id)
-                        }
-                    })
-                } else {
-                    if (m.indexOf(c.cardid) === -1 ) {
-                        m.push(c.cardid)
-                    }
-                }
-                return m
-            }, [])
+            const pirateReach = getPirateReach(card)
             if (state.QuestCrawl.artifacts.pocket_pirate_ship && pirateReach.indexOf(grid.get(lastPos).cardid) === -1) {
                 state.QuestCrawl.preventMove = () => {
                     sendChat('QuestCrawl', 'Invalid move, you can only move to a connected territory or one connected by a gap (pocket pirate ship), returning to last location.')
@@ -1568,11 +1572,10 @@ on("ready", () => {
         }
         if (state.QuestCrawl.preventMove) {
             const {mode} = config;
-            if (!lastPos || !card.id || card.id === 'Gap') {
-                lastPos = lastPos || {x: 0, y: 0};
-                card = grid.get(lastPos);
+            let screenPos = {};
+            if (mode === 'original') {
+                screenPos = toScreenGrid(lastPos, card.cardSize);
             }
-            let screenPos = toScreenGrid(lastPos, card.cardSize);
             if (mode === 'hexagon') {
                 screenPos = toScreenHex(lastPos, card.cardSize);
             }
@@ -1786,16 +1789,16 @@ on("ready", () => {
 
     function resetBoard(deckid) {
         setTimeout(() => {
-            recallCards(deckid)
+            recallCards(deckid);
             setTimeout(() => {
-                shuffleDeck(deckid)
+                shuffleDeck(deckid);
                 setTimeout(() => {
-                    recallCards(deckid)
+                    recallCards(deckid);
                     setTimeout(() => {
-                        shuffleDeck(deckid)
-                        grid = new Grid()
-                        placed = []
-                        open = []
+                        shuffleDeck(deckid);
+                        grid = new Grid();
+                        placed = [];
+                        open = [];
                         state.QuestCrawl.day = 0;
                         state.QuestCrawl.evil = 0;
                         state.QuestCrawl.currentChampion = 0;
@@ -1805,28 +1808,29 @@ on("ready", () => {
                         state.QuestCrawl.quests = {};
                         state.QuestCrawl.spells = {};
                         delete state.QuestCrawl.factions;
-                        updateTracker()
-                        resetConfig()
-                    }, 100)
-                }, 100)
-            }, 100)
-        }, 100)
+                        updateTracker();
+                        resetConfig();
+                    }, 100);
+                }, 100);
+            }, 100);
+        }, 100);
     }
 
     function forageResult(character, who, params) {
-        const outcome = parseOutcome(params)
-        const {result} = outcome
+        const outcome = parseOutcome(params);
+        const {result} = outcome;
         if (result >= parseInt(params.challenge, 10)) {
-            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and were able to successfully forage ${result} supplies today!`)
+            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and were able to successfully forage ${result} supplies today!`);
             setAttrs(character.id, {
                 supplies: Math.min(character.supplies_max, character.supplies + result)
             });
         } else {
-            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and failed to collect any supplies today.`)
+            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and failed to collect any supplies today.`);
         }
         if (params.source.indexOf('ancient-knowledge') !== -1 && Object.values(outcome.vals).some(x => x > 1)) {
-            sendChat('QuestCrawl', `/w ${who} The secrets of the Elves has lead you to discover Healing Herbs here. [Collect Healing Herbs](!questcrawl --buy --item 6 --cost 0)`)
+            sendChat('QuestCrawl', `/w ${who} The secrets of the Elves has lead you to discover Healing Herbs here. [Collect Healing Herbs](!questcrawl --buy --item 6 --cost 0)`);
         }
+        discardBrokenItems(character, who, outcome);
     }
 
     function ancientKnowledgeBonus(output) {
@@ -1850,6 +1854,7 @@ on("ready", () => {
         suitBonus(character, params, output)
         ancientKnowledgeBonus(output)
         holyRodBonus(character, output)
+        spellBonus(character, output)
         sendChat('QuestCrawl', `/w ${who} [${output.label} ${output.dice.length}d6]${getChallengeCommandArgs(character, 'forage', params, output)}`)
     }
 
@@ -2493,8 +2498,8 @@ on("ready", () => {
             return
         }
         const {history} = state.QuestCrawl
-        const coord = history.slice(-1)
-        const rest = history.slice(0,-1)
+        const coord = getLastLogEntry()
+        const rest = history.slice(0, history.indexOf(coord))
         const previouslyVisited = rest.find(({name}) => name === coord.name);
         if (previouslyVisited) {
             sendChat('QuestCrawl', `<h2>${character.name} successfully leads everyone on a heist to rob the Megabeast's lair (${renderOutcome(outcome)}). You escape with 2 Treasure, 1 Random Magic Item, and 1 Weapon of Legend.</h2>`)
