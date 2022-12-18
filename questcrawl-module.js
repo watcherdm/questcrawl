@@ -162,8 +162,7 @@ on("ready", () => {
     }
 
     function checkForBandits(card,c,commands) {
-        const city_of_thieves = card.getAllNeighbors().find((coord) => {
-            const c = grid.get(coord)
+        const city_of_thieves = card.getAllNeighbors().find((c) => {
             return c.name === 'King of Diamonds' && c.faceup;
         })
         if (city_of_thieves && state.QuestCrawl.factions.city_of_thieves !== 2) {
@@ -182,8 +181,7 @@ on("ready", () => {
     }
 
     function checkForEvil(card) {
-        const unearthed_evil = card.getAllNeighbors().find((coord) => {
-            const c = grid.get(coord)
+        const unearthed_evil = card.getAllNeighbors().find((c) => {
             return c.name === 'King of Spades' && c.faceup;
         })
         if (unearthed_evil && state.QuestCrawl.factions.unearthed_evil !== 2 && numberMap[card.face]) {
@@ -514,7 +512,7 @@ on("ready", () => {
             state.QuestCrawl.factions = {};
         }
         if (!state.QuestCrawl.history) {
-            state.QuestCrawl.history = [];
+            state.QuestCrawl.history = [{x: 0, y: 0, name: 'Red Joker'}];
         }
         if (!state.QuestCrawl.mapHistory) {
             state.QuestCrawl.mapHistory = [];
@@ -710,7 +708,7 @@ on("ready", () => {
         getAllNeighbors: function() {
             let {x, y} = this;
             return this.neighbors.map((n) => {
-                return {x: x + n.x, y: y + n.y}
+                return grid.get({x: x + n.x, y: y + n.y})
             });
         },
         place: function(faceup = false){
@@ -837,7 +835,7 @@ on("ready", () => {
         getAllNeighbors: function() {
             let {x, y} = this;
             return this.neighbors.map((n) => {
-                return {x: x + n.x, y: y + n.y}
+                return grid.get({x: x + n.x, y: y + n.y})
             });
         }
     }
@@ -1540,11 +1538,9 @@ on("ready", () => {
         }
         let lastPos = history[history.length - 1];
         if (lastPos && card.getAllNeighbors) {
-            const pirateReach = card.getAllNeighbors().reduce((m, n) => {
-                const c = grid.get(n)
+            const pirateReach = card.getAllNeighbors().reduce((m, c) => {
                 if (c.id === 'Gap') {
-                    c.getAllNeighbors().map((x) => {
-                        const n = grid.get(x)
+                    c.getAllNeighbors().map((n) => {
                         return n.cardid
                     }).forEach((id) => {
                         if (m.indexOf(id) === -1 ) {
@@ -1563,7 +1559,7 @@ on("ready", () => {
                     sendChat('QuestCrawl', 'Invalid move, you can only move to a connected territory or one connected by a gap (pocket pirate ship), returning to last location.')
                     state.QuestCrawl.preventMove = false;
                 }
-            } else if (!state.QuestCrawl.artifacts.pocket_pirate_ship && card.getAllNeighbors().map(x => grid.get(x).cardid).indexOf(grid.get(lastPos).cardid) === -1) {
+            } else if (!state.QuestCrawl.artifacts.pocket_pirate_ship && card.getAllNeighbors().map(x => x.cardid).indexOf(grid.get(lastPos).cardid) === -1) {
                 state.QuestCrawl.preventMove = () => {
                     sendChat('QuestCrawl', 'Invalid move, you can only move to a connected territory, returning to last location.')
                     state.QuestCrawl.preventMove = false;
@@ -1629,12 +1625,13 @@ on("ready", () => {
         });
     }
 
-    function getLastLogEntry() {
-        const {history} = state.QuestCrawl
-        if (history.length === 0) {
-            return {x: 0, y: 0, name: 'Red Joker'}
+    function getLastLogEntry(move = true) {
+        if (move) {
+            return getMoveHistory().slice(0).pop()
+        } else {
+            const {history} = state.QuestCrawl
+            return history.slice(0).pop()
         }
-        return history[history.length -1]
     }
 
     function getCurrentCard(logEntry = getLastLogEntry()) {
@@ -1664,6 +1661,10 @@ on("ready", () => {
 
     }
 
+    function getMoveHistory() {
+        return state.QuestCrawl.history.filter(x => x.type !== 'map');
+    }
+
     function onFarseeingEyeMoved(grid, obj) {
         const left = parseInt(obj.get("left"), 10)
         const top = parseInt(obj.get("top"), 10)
@@ -1689,7 +1690,7 @@ on("ready", () => {
             }
         } else {
             if (lastPos && card.getAllNeighbors) {
-                if (card.getAllNeighbors().map(x => grid.get(x)).indexOf(grid.get(lastPos)) === -1) {
+                if (card.getAllNeighbors().indexOf(grid.get(lastPos)) === -1) {
                     state.QuestCrawl.preventMove = () => {
                         sendChat('QuestCrawl', 'Invalid move, you can only move to a connected territory, returning to last location.')
                         state.QuestCrawl.preventMove = false;
@@ -1718,7 +1719,8 @@ on("ready", () => {
         let name = data.get('name')
         chatCard(card, logEntry, name).then(() => {
             state.QuestCrawl.mapHistory.push(logEntry)
-            state.QuestCrawl.history.unshift(logEntry) // add to beginning of log to support previously visited.
+            logEntry.type = 'map'
+            state.QuestCrawl.history.push(logEntry) // add to beginning of log to support previously visited.
             state.QuestCrawl.farSightRemaining--
             getFarseeingToken().set({
                 bar2_value: state.QuestCrawl.farSightRemaining
@@ -2126,25 +2128,25 @@ on("ready", () => {
         });
 
         onSheetWorkerCompleted(function() {
-            createObj('attribute', {
-                name: `${rowid}_img`,
-                characterid: character.id,
-                current: items[key].img,
-            }, {silent: true});
-            createObj('attribute', {
-                name: `${rowid}_effect`,
-                characterid: character.id,
-                current: items[key].description,
-            }, {silent: true});
-            createObj('attribute', {
-                name: `${rowid}_name`,
-                characterid: character.id,
-                current: items[key].name,
-            }, {silent: true});
-            setAttrs(character.id, {
-                inventory: character.inventory + 1,
-                treasure: character.treasure - params.cost
-            }, {silent: true});                
+            // createObj('attribute', {
+            //     name: `${rowid}_img`,
+            //     characterid: character.id,
+            //     current: items[key].img,
+            // }, {silent: true});
+            // createObj('attribute', {
+            //     name: `${rowid}_effect`,
+            //     characterid: character.id,
+            //     current: items[key].description,
+            // }, {silent: true});
+            // createObj('attribute', {
+            //     name: `${rowid}_name`,
+            //     characterid: character.id,
+            //     current: items[key].name,
+            // }, {silent: true});
+            // setAttrs(character.id, {
+            //     inventory: character.inventory + 1,
+            //     treasure: character.treasure - params.cost
+            // }, {silent: true});                
 
             sendChat('QuestCrawl', `/w ${who} <h3>${items[key].name} was added to your inventory! ${itemCommands[key] ? itemCommands[key](character, rowKey) : ''}</h3>`)    
         })
@@ -2169,7 +2171,7 @@ on("ready", () => {
         }
         const pyramid = grid.get({x: parseFloat(x, 10), y: parseFloat(y, 10)})
         const map = twist === 'cc' ? ccPropMap : cPropMap;
-        pyramid.getAllNeighbors().map(n => grid.get(n)).forEach((ncard, i) => {
+        pyramid.getAllNeighbors().forEach((ncard, i) => {
             if (!ncard.id) {
                 return
             }
@@ -2311,8 +2313,7 @@ on("ready", () => {
         if (character.items.indexOf('Holy Rod') !== -1) {
             const card = getCurrentCard()
 
-            const nearQuest = card.getAllNeighbors().some((n) => {
-                const c = grid.get(n)
+            const nearQuest = card.getAllNeighbors().some((c) => {
                 if (!c.faceup || c.id === 'Gap') {
                     return false;
                 }
@@ -2367,28 +2368,27 @@ on("ready", () => {
         state.QuestCrawl.currentChampion = null
         if (challenge > outcome.result) {
             // move the party token, back to the previous tile
-            const origin = history[history.length - 2]
+            const origin = getMoveHistory().slice(-2).shift()
             let screenPos = toScreenGrid(origin, card.cardSize)
             if (mode === 'hexagon') {
                 screenPos = toScreenHex(origin, card.cardSize)
             }
             getPartyToken().set(screenPos)
-            state.QuestCrawl.history.push(origin)
+            history.push(origin)
             sendChat('QuestCrawl', `<h2 style='color: red;'>Your party was unable to scale the reaches, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). You return to where you left from.</h2>`)
             return
         }
-        card.getAllNeighbors().forEach(c => {
-            const card = grid.get(c)
+        card.getAllNeighbors().forEach(card => {
             if (card && !card.faceup) {
                 if (card.flip) {
                     card.flip(true)
-                    history.unshift(card)
+                    const logEntry = {x: card.x, y: card.y, name: card.name, type: 'map'}
+                    history.push(logEntry)
                 }
             }
         })
         sendChat('QuestCrawl', `<h2>${character.name} leads everyone up the mountain, rolling (${renderOutcome(outcome)}).</h2>`)
-        const c = getObj('card', card.cardid);
-        const name = c.get('name');
+        const name = card.name;
         if (params.climb === 'dwarves') {
             sendChat('QuestCrawl', `${dwarves()}`);
         } else {
