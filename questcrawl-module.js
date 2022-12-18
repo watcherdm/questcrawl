@@ -1820,12 +1820,12 @@ on("ready", () => {
         const outcome = parseOutcome(params);
         const {result} = outcome;
         if (result >= parseInt(params.challenge, 10)) {
-            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and were able to successfully forage ${result} supplies today!`);
+            sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and was able to successfully forage ${result} supplies today!`);
             setAttrs(character.id, {
                 supplies: Math.min(character.supplies_max, character.supplies + result)
             });
         } else {
-            sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and failed to collect any supplies today.`);
+            sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and failed to collect any supplies today.`);
         }
         if (params.source.indexOf('ancient-knowledge') !== -1 && Object.values(outcome.vals).some(x => x > 1)) {
             sendChat('QuestCrawl', `/w ${who} The secrets of the Elves has lead you to discover Healing Herbs here. [Collect Healing Herbs](!questcrawl --buy --item 6 --cost 0)`);
@@ -1916,7 +1916,8 @@ on("ready", () => {
         if (params.type !== 'faction') {
             if (outcome.result >= parseInt(params.challenge)) {
                 const treasureMessage = character.treasure === character.treasure_max ? 'You cannot carry anymore <em>Treasure</em>!' : 'You have collected 1 <em>Treasure</em>.'
-                sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and have defeated the <em>Terrible Beastie</em>! ${treasureMessage} [Roll to Loot](${rabbitsFoot(character, '!questcrawl --loot &#91;[1d6]&#93;)', 'loot')}`)
+                sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and has  defeated the <em>Terrible Beastie</em>!`)
+                sendChat('QuestCrawl', `/w ${who} ${treasureMessage} [Roll to Loot](${rabbitsFoot(character, '!questcrawl --loot &#91;[1d6]&#93;)', 'loot')}`)
                 setAttrs(character.id, {
                     treasure: Math.min(character.treasure_max, character.treasure + 1)
                 });    
@@ -2153,7 +2154,8 @@ on("ready", () => {
             //     treasure: character.treasure - params.cost
             // }, {silent: true});                
 
-            sendChat('QuestCrawl', `/w ${who} <h3>${items[key].name} was added to your inventory! ${itemCommands[key] ? itemCommands[key](character, rowKey) : ''}</h3>`)    
+            sendChat('QuestCrawl', `<h3>${character.name} added ${items[key].name} to their inventory!</h3>`)
+            sendChat('QuestCrawl', `/w ${who} ${itemCommands[key] ? itemCommands[key](character, rowKey) : ''}`)
         })
 
         item.setWithWorker({current: key})
@@ -2586,6 +2588,7 @@ on("ready", () => {
             sendChat('Oracle of the Henge', `/w ${who} You don't posess enough treasure to engage my mystical services. Come back when you do.`)
             return
         }
+        sendChat('QuestCrawl', `${character.name} has activated a remote viewing power. Move the Eye token [${params.map}] time on connected unrevealed territories.`)
         setAttrs(character.id, {
             treasure: character.treasure - params.cost
         });
