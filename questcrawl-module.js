@@ -7,12 +7,13 @@ on("ready", () => {
     let offset = 1085;
     const vOffset = 847;
     const hOffset = 864;
-    
+    log('defining offsets')
     const offsets = {
         x: 37.5,
         y: 67
     }
 
+    log('defining numbermap')
     const numberMap = {
         'two': 2,
         'three': 3,
@@ -23,33 +24,25 @@ on("ready", () => {
         'eight': 8
     }
 
-    function getState() {
-        const pageId = Campaign().get('playerpageid');
-        if (state.QuestCrawl[pageId]) {
-            return state.QuestCrawl[pageId];
-        }
-    }
-
-    function setState(state) {
-        const pageId = Campaign().get('playerpageid');
-        state.QuestCrawl[pageId] = state;
-    }
-
-    function logPartyEvent(event) {
+    // log('logPartyEvent')
+    function logPartyEvent (event) {
         (getLastLogEntry().events || []).push({character: null, event})
     }
 
-    function logEvent(character, event) {
+    // log('logEvent')
+    function logEvent (character, event) {
         (getLastLogEntry().events || []).push({character: character.name, event})
     }
 
-    function checkForMaps(c, commands) {
+    // log('checkForMaps')
+    function checkForMaps (c, commands) {
         if (c.items.indexOf('Map') !== -1) {
             commands.push(`[Use Map](!questcrawl --map &#91;[1d6]&#93; --cost 0 --removeitem ${getItemRowId(c, 'Map')})`)
         }
     }
 
-    function checkForBookofSpells(c, commands) {
+    // log('checkForBookofSpells')
+    function checkForBookofSpells (c, commands) {
         if (c.items.indexOf('Book of Spells') !== -1) {
             getParty().forEach(x => {
                 if (c.id === x.id) {return}
@@ -58,7 +51,8 @@ on("ready", () => {
         }
     }
 
-    function bookofspells(character, who, args) {
+    // log('bookofspells')
+    function bookofspells (character, who, args) {
         const params = getParams(args, 1)
         const target = getObj('character', params.bookofspells)
         logEvent(character, `Cast a spell from the Book of Spells on ${target.get('name')}`)
@@ -71,7 +65,8 @@ on("ready", () => {
         state.QuestCrawl.spells[params.bookofspells] = character.id
     }
 
-    function checkArtifacts() {
+    // log('checkArtifacts')
+    function checkArtifacts () {
         state.QuestCrawl.artifacts.dwarven_tunnel_passport = false
         state.QuestCrawl.artifacts.ancient_knowledge = false
         state.QuestCrawl.artifacts.pocket_pirate_ship = false
@@ -119,28 +114,8 @@ on("ready", () => {
         };
     })();
     
-    function makeMacros() {
-        const endTurnMacro = findObjs({type: 'macro', name: 'End-Turn'})[0]
-        if (!endTurnMacro) {
-            createObj('macro', {
-                name: 'End Turn',
-                action: '!questcrawl --endturn',
-                visibleto: ["all"],
-                istokenaction: true
-            })
-        }
-        const characterMacro = findObjs({type: 'macro', name: 'Character'})[0]
-        if (!characterMacro) {
-            createObj('macro', {
-                name: 'End Turn',
-                action: '!questcrawl --endturn',
-                visibleto: ["all"],
-                istokenaction: true
-            })
-        }
-    }
-
-    function bandits(character, who, args) {
+    // log('bandits')
+    function bandits (character, who, args) {
         const params = getParams(args, 1);
         const outcome = parseOutcome(params, who)
         if (parseInt(params.bandits) <= outcome.result) {
@@ -156,7 +131,8 @@ on("ready", () => {
 
     }
 
-    function checkForOrbOfChaos(c, commands) {
+    // log('checkForOrbOfChaos')
+    function checkForOrbOfChaos (c, commands) {
         if (c.items.includes('Orb of Chaos')) {
             const command = itemCommands['orb-of-chaos'](c, getItemRowId(c, 'Orb of Chaos'))
             log(command)
@@ -164,13 +140,15 @@ on("ready", () => {
         }
     }
 
-    function checkForHealingHerbs(c, commands) {
+    // log('checkForHealingHerbs')
+    function checkForHealingHerbs (c, commands) {
         if (c.items.indexOf('Healing Herbs') !== -1 && c.injuries > 0) {
             commands.push(`[Heal an Injury with Herbs](!questcrawl --heal 1 --cost 0 --removeitem ${getItemRowId(c, 'Healing Herbs')})`)
         }
     }
 
-    function holyrod(character, who, args) {
+    // log('holyrod')
+    function holyrod (character, who, args) {
         const params = getParams(args, 1)
         const injuries = parseInt(getAttrByName(params.holyrod, 'injuries'), 10)
         const target = getObj('character', params.holyrod)
@@ -185,7 +163,8 @@ on("ready", () => {
         })
     }
 
-    function checkForHolyRod(c, commands) {
+    // log('checkForHolyRod')
+    function checkForHolyRod (c, commands) {
         if (c.items.indexOf('Holy Rod') !== -1) {
             getParty().forEach(x => {
                 if(x.id === c.id) {return}
@@ -196,7 +175,8 @@ on("ready", () => {
         }
     }
 
-    function checkForBandits(c,commands) {
+    // log('checkForBandits')
+    function checkForBandits (c,commands) {
         const card = getCurrentCard();
         const city_of_thieves = card.getAllNeighbors().find((c) => {
             return c.name === 'King of Diamonds' && c.faceup;
@@ -216,7 +196,8 @@ on("ready", () => {
         }
     }
 
-    function checkForEvil(card) {
+    // log('checkForEvil')
+    function checkForEvil (card) {
         const unearthed_evil = card.getAllNeighbors().find((c) => {
             return c.name === 'King of Spades' && c.faceup;
         })
@@ -228,7 +209,8 @@ on("ready", () => {
 
     const generateRowID = () => generateUUID().replace(/_/g, "-");
 
-    function cyrb128(str) {
+    // log('cyrb128')
+    function cyrb128 (str) {
         let h1 = 1779033703, h2 = 3144134277,
             h3 = 1013904242, h4 = 2773480762;
         for (let i = 0, k; i < str.length; i++) {
@@ -245,7 +227,8 @@ on("ready", () => {
         return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
     };
     
-    function mulberry32(a) {
+    // log('mulberry32')
+    function mulberry32 (a) {
         return function() {
           var t = a += 0x6D2B79F5;
           t = Math.imul(t ^ t >>> 15, t | 1);
@@ -254,7 +237,8 @@ on("ready", () => {
         }
     };
     
-    function getParty() {
+    // log('getParty')
+    function getParty () {
         const players = getOnlinePlayers()
         return players.map(p => getCharacterJSON(p))
     }
@@ -495,7 +479,8 @@ on("ready", () => {
         }
     }
 
-    function vault(character, who, args) {
+    // log('vault')
+    function vault (character, who, args) {
         const params = getParams(args, 1)
         if (params.vault) {
             logEvent(character, 'Plundered the Vault. Giving each party member 9 treasure.')
@@ -518,7 +503,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${keyHolder.who} [Open the Vault](!questcrawl --vault ${getItemRowId(keyHolder, 'Vault Key')})`)
     }
 
-    function quest(character, who, args) {
+    // log('quest')
+    function quest (character, who, args) {
         const card = getCurrentCard()
         const params = getParams(args, 1)
         if (character.suit1 === params.quest) {
@@ -538,7 +524,22 @@ on("ready", () => {
         }
     }
 
-    function resetConfig() {
+    // log('detectPageGrid')
+    function detectPageGrid () {
+        const gridType = getObj('page', getPageId()).get('grid_type')
+        if (gridType === 'square') {
+            log('setting mode original')
+            changeMode('original')
+        } else if (gridType === 'hex') {
+            log('setting mode hexagon')
+            changeMode('hexagon')
+        }
+    }
+
+    // log('resetConfig')
+    function resetConfig () {
+        log('resetting config')
+        const pageid = Campaign().get('playerpageid')
         if (!state.QuestCrawl) {
             state.QuestCrawl = {
                 version: 2.1,
@@ -578,17 +579,13 @@ on("ready", () => {
             state.QuestCrawl.quests = {};
         }
         state.QuestCrawl.currentChampion = null;
-        const gridType = getObj('page', Campaign().get('playerpageid')).get('grid_type')
-        if (gridType === 'square') {
-            state.QuestCrawl.config.mode = 'original'
-        } else if (gridType === 'hex') {
-            state.QuestCrawl.config.mode = 'hexagon'
-        }
+        detectPageGrid()
     }
 
     resetConfig()
     
-    function resetRng(seed) {
+    // log('resetRng')
+    function resetRng (seed) {
         if (seed) {
             if (state.QuestCrawl.config.seed) {
                 state.QuestCrawl.config.originalSeed = state.QuestCrawl.config.seed
@@ -605,13 +602,29 @@ on("ready", () => {
         rng = mulberry32(salt[0])
     }
 
-    function endTurn() {
+    function getEpitaph(character) {
+        const history = filterObjs((obj) => {
+            if(obj.get("type") === 'attribute' && obj.get('characterid') === character.id &&
+                 obj.get('name').indexOf('repeating_history') > -1) return true;})
+    }
+
+    // log('endTurn')
+    function endTurn () {
         state.QuestCrawl.day++;
         getLastLogEntry().day = state.QuestCrawl.day
         state.QuestCrawl.grid = grid.toJSON().map(c => c.toJSON());
         const players = getOnlinePlayers();
         players.forEach((player) => {
             const character = getCharacterJSON(player)
+            if (getAttrByName(character.id, 'mode') === 'graveyard') {
+                if (getEpitaph(character).length > 0) {
+                    return;
+                } else {
+                    getCharacterHistory(character).forEach((l) => addEpitaphDay(character, l))
+                    log(`he's dead jim`);
+                    return
+                }
+            }
             const output = {
                 supplies: character.supplies,
                 injuries: character.injuries,
@@ -628,8 +641,9 @@ on("ready", () => {
         updateTracker();
     }
 
-    function updateTracker() {
-        const tracker = getObj('text', state.QuestCrawl.trackerid);
+    // log('updateTracker')
+    function updateTracker () {
+        const tracker = getOrCreateDayTracker()
         tracker.set('text', `Day: ${state.QuestCrawl.day}`);
     }
 
@@ -658,7 +672,8 @@ on("ready", () => {
         }
     };
     
-    function getOrCreateDayTracker() {
+    // log('getOrCreateDayTracker')
+    function getOrCreateDayTracker () {
         let tracker = getObj('text', state.QuestCrawl.trackerid);
         if (!tracker) {
             tracker = createObj('text', {
@@ -688,19 +703,27 @@ on("ready", () => {
             });
             state.QuestCrawl.trackerid = tracker.id
         }
-        updateTracker();
+        return tracker
     }
-
-        
-    getOrCreateDayTracker()
 
     const showHelp = () => {
         log("we could all certainly use a little help!")
     }
 
     const sendError = (who, msg) => sendChat('QuestCrawl',`/w "${who}" ${msg}`);
+    
+    // log('checkEndGame')
+    function checkEndGame () {
+        return ['hearts', 'diamonds', 'clubs', 'spades'].every(k => (state.QuestCrawl.quests || {})[k])
+    }
 
-    function QuestCrawlCard({x, y, id, cardid, faceup, blank = false}) {
+    // log('getThumb')
+    function getThumb (img) {
+        return img.replace('med.png', 'thumb.png')
+    }
+
+    // log('QuestCrawlCard')
+    function QuestCrawlCard ({x, y, id, cardid, faceup, blank = false}) {
         const {mode} = state.QuestCrawl.config;
         this.x = x
         this.y = y
@@ -742,10 +765,6 @@ on("ready", () => {
         if (faceup) {
             this.flip()
         }
-    }
-    
-    function checkEndGame() {
-        return ['hearts', 'diamonds', 'clubs', 'spades'].every(k => (state.QuestCrawl.quests || {})[k])
     }
 
     QuestCrawlCard.prototype = {
@@ -822,7 +841,7 @@ on("ready", () => {
             const side = this.faceup ? 0 : 1;
             this.graphic.set({
                 currentSide: side,
-                imgsrc: decodeURIComponent(this.graphic.get('sides').split('|')[side].replace('med.png', 'thumb.png'))
+                imgsrc: decodeURIComponent(getThumb(this.graphic.get('sides').split('|')[side]))
             })
 
             const name = this.name
@@ -842,10 +861,30 @@ on("ready", () => {
         },
         makeBlank: function() {
             this.blank = true;
+        },
+        move: function({x, y}) {
+            const {mode} = state.QuestCrawl.config;
+            this.x = x
+            this.y = y
+            if (!this.graphic) {
+                this.graphic = getObj('graphic', this.id);
+            }
+            if (mode === 'original') {
+                this.graphic.set({
+                    left: offset + (this.x * this.cardSize),
+                    top: offset + (this.y * this.cardSize)
+                })
+            } else if (mode === 'hexagon') {
+                this.graphic.set({
+                    left: hOffset + (this.x * this.cardSize.w),
+                    top: vOffset + (this.y * offsets.y),
+                })
+            }
         }
     }
 
-    function GapCard({x, y}) {
+    // log('GapCard')
+    function GapCard ({x, y}) {
         const {mode} = state.QuestCrawl.config
         this.x = x
         this.y = y
@@ -888,7 +927,6 @@ on("ready", () => {
             }
         },
         place: function(){
-            grid.put(this)
         },
         getAllNeighbors: function() {
             let {x, y} = this;
@@ -896,10 +934,15 @@ on("ready", () => {
                 return grid.get({x: x + n.x, y: y + n.y})
             });
         },
-        flip: () => {}
+        flip: () => {},
+        move: (coords) => {
+            this.x = coords.x
+            this.y = coords.y
+        }
     }
 
-    function Grid() {
+    // log('Grid')
+    function Grid () {
         this.internal = {}
         this.setup = true
     }
@@ -916,16 +959,15 @@ on("ready", () => {
         put: function(card) {
             this.internal[card.getCoordString()] = card;
         },
+        remove: function(card) {
+            this.internal[card.getCoordString()] = null;
+        },
         toJSON: function() {
             return Object.values(this.internal)
         },
         move: function(card, coords) {
-            if (this.internal[card.getCoordString()] === card) {
-                delete this.internal[card.getCoordString()]
-            }
-            card.x = coords.x
-            card.y = coords.y
-            this.put(card)
+            this.remove(card)
+            card.move(coords)
         }
     }
 
@@ -943,14 +985,16 @@ on("ready", () => {
         }, (new Grid()));
     }
 
-    function toScreenGrid({x, y}, cardSize) {
+    // log('toScreenGrid')
+    function toScreenGrid ({x, y}, cardSize) {
         return {
             left: offset + (x * cardSize),
             top: offset + (y * cardSize)
         }
     }
 
-    function toScreenHex({x, y}, cardSize) {
+    // log('toScreenHex')
+    function toScreenHex ({x, y}, cardSize) {
         return {
             left: hOffset + (x * cardSize.w),
             top: vOffset + (y * offsets.y)
@@ -971,21 +1015,55 @@ on("ready", () => {
         grid = new Grid()
     }
 
-    function getPartyToken() {
-        return getObj('graphic', state.QuestCrawl.tokenid)
+    // log('getPageId')
+    function getPageId () {
+        return Campaign().get('playerpageid');
     }
 
-    function getFarseeingToken() {
-        const partyToken = getPartyToken()
-        return findObjs({type: 'graphic', name: 'Farseeing Eye', pageid: partyToken.get('pageid') })[0]
+    // log('getCoreToken')
+    function getCoreToken (name='Party') {
+        const pageid = getPageId()
+        const character = findObjs({type: 'character', name})[0];
+        const tokens = findObjs({type: 'graphic', name, pageid })
+        const result = tokens.length > 0 ? tokens[0] : createObj('graphic', {
+            name,
+            represents: character.get('id'),
+            imgsrc: getThumb(character.get('avatar')),
+            height: 70,
+            width: 70,
+            pageid,
+            layer: 'objects'
+        })
+        log(result)
+        return new PartyToken(result)
+    }
+
+    // log('getPartyToken')
+    function getPartyToken () {
+        if (!PartyToken.Party) {
+            PartyToken.Party = getCoreToken()
+            PartyToken.Party.move({x:0,y:0})
+        }
+        return PartyToken.Party
+    }
+
+    // log('getFarseeingToken')
+    function getFarseeingToken () {
+        if (!PartyToken.Eye) {
+            PartyToken.Eye = getCoreToken('Farseeing Eye')
+            PartyToken.Eye.move({x:0,y:0})
+        }
+        return PartyToken.Eye
     }
 
 
-    function getRandomOpenCard() {
+    // log('getRandomOpenCard')
+    function getRandomOpenCard () {
         return open[Math.floor(rng() * (open.length - 1))];
     }
 
-    function toCoords(left, top) {
+    // log('toCoords')
+    function toCoords (left, top) {
         const {mode} = state.QuestCrawl.config;
         if (mode === 'original') {
             return {x: (left - offset) / cardSize , y: (top - offset) / cardSize}
@@ -1000,7 +1078,8 @@ on("ready", () => {
         }
     }
 
-    function detectGameState() {
+    // log('detectGameState')
+    function detectGameState () {
         if (!state.QuestCrawl.config.deck) {
             sendChat('QuestCrawl', 'Unable to detect running game state, invalid configuration')
             return
@@ -1020,16 +1099,19 @@ on("ready", () => {
         })
     }
 
-    function getCharacterId(player) {
+    // log('getCharacterId')
+    function getCharacterId (player) {
         const {players} = state.QuestCrawl;
         return players[player.id]
     }
 
-    function getItemRowId(character, item) {
-        return character.itemIds.find(x => x.name === item).id;
+    // log('getItemRowId')
+    function getItemRowId (character, item) {
+        return (character.itemIds.find(x => x.name === item) || {}).id;
     }
 
-    function getCharacterItems(characterId) {
+    // log('getCharacterItems')
+    function getCharacterItems (characterId) {
         return filterObjs((obj) => {
             if(obj.get("type") === 'attribute' && obj.get('characterid') === characterId &&
                  obj.get('name').indexOf('repeating_inventory') > -1 && obj.get('name').indexOf('_name') > -1) return true;
@@ -1040,7 +1122,8 @@ on("ready", () => {
         });
     }
 
-    function getCardsFromDeck(deckid) {
+    // log('getCardsFromDeck')
+    function getCardsFromDeck (deckid) {
         return findObjs({type: 'card', deckid}).sort((a, b) => {
             const aname = a.get('name');
             const bname = b.get('name');
@@ -1056,7 +1139,8 @@ on("ready", () => {
         }).map(x => x.id);
     }
 
-    function Character(id) {
+    // log('Character')
+    function Character (id) {
         this.id = id;
         this.system = getObj('character', id);
         this.itemIds = getCharacterItems(id)
@@ -1064,6 +1148,7 @@ on("ready", () => {
         this.days = getAttrByName(id, 'days')
         this.suit1 = getAttrByName(id, 'first_suit')
         this.suit2 = getAttrByName(id, 'second_suit')
+        this.mode = getAttrByName(id, 'mode')
         this.quest = getAttrByName(id, 'quest')
         this.name = getAttrByName(id, 'character_name')
         this.treasure = parseInt(getAttrByName(id, 'treasure'), 10)
@@ -1076,7 +1161,8 @@ on("ready", () => {
         this.inventory_max = parseInt(getAttrByName(id, 'max_inventory'), 10)
     }
 
-    function getCharacterJSON(player) {
+    // log('getCharacterJSON')
+    function getCharacterJSON (player) {
         const id = getCharacterId(player)
         const who = player.get('displayname')
         const character = new Character(id)
@@ -1112,7 +1198,8 @@ on("ready", () => {
 
     ]
 
-    function rabbitsFootResult(character, who, args) {
+    // log('rabbitsFootResult')
+    function rabbitsFootResult (character, who, args) {
         const params = getParams(args, 1);
         const rolls = params[params.rabbitsfoot].split('|');
         const commands = rolls.map((r, i) => {
@@ -1131,13 +1218,17 @@ on("ready", () => {
                 }
                 return m + ` --${a}`
             }, '')
-            return `[Reroll ${r}](${next} --removeitem ${getItemRowId(character, `Rabbit's Foot`)})`
+            const itemId = getItemRowId(character, `Rabbit's Foot`)
+            if (itemId) {
+                return `[Reroll ${r}](${next} --removeitem ${itemId})`
+            }
         })
         commands.unshift(`[Keep All](${args.filter(a => a.indexOf('rabbitsfoot') !== 0).join(' --')})`)
         sendChat('QuestCrawl', `/w ${who} Would you like to discard your Rabbit's Foot to reroll? ${commands.join(' ')} = [${rolls.reduce((m, n) => m + parseInt(n, 10), 0)}]`)
     }
 
-    function rabbitsFoot(character, command, key='result') {
+    // log('rabbitsFoot')
+    function rabbitsFoot (character, command, key='result') {
         if (character.items.indexOf("Rabbit's Foot") !== -1) {
             return command.replace(/!questcrawl /, `!questcrawl --rabbitsfoot ${key} `);
         }
@@ -1252,7 +1343,8 @@ on("ready", () => {
         }
     }
 
-    function distributeFactionReward(key) {
+    // log('distributeFactionReward')
+    function distributeFactionReward (key) {
         const party = getParty();
         let treasure = 5
         // treasure handed out
@@ -1291,7 +1383,8 @@ on("ready", () => {
         state.QuestCrawl.factions[key] = 2
     }
 
-    function handleFactionResult(character, who, card, params, outcome, key, name) {
+    // log('handleFactionResult')
+    function handleFactionResult (character, who, card, params, outcome, key, name) {
         const {battlefield} = state.QuestCrawl
         if (battlefield[character.id] !== 0) {
             sendChat('QuestCrawl', `/w ${who} You have already resolved your challenge here. ${renderOutcome(outcome)}`);
@@ -1342,6 +1435,7 @@ on("ready", () => {
         }
 
     }
+
     const factions = {
         initiate: {
             hearts: () => {
@@ -1529,16 +1623,19 @@ on("ready", () => {
         }
     }
 
-    function getChallengeCommandArgs(character, challenge, params, output) {
+    // log('getChallengeCommandArgs')
+    function getChallengeCommandArgs (character, challenge, params, output) {
         const inner = `!questcrawl --${challenge} --suit ${params.suit} --challenge ${params.challenge} --result ${output.dice.map(d => `&#91;[${d}]&#93;`).join("|")} --source ${output.source.join('|')} --type ${output.type}`;
         return `(${rabbitsFoot(character, inner)})`
     }
 
-    function getBeastieCommandArgs(character, params, output) {
+    // log('getBeastieCommandArgs')
+    function getBeastieCommandArgs (character, params, output) {
         return getChallengeCommandArgs(character, 'beastie', params, output);
     }
 
-    function parseOutcome(params, who) {
+    // log('parseOutcome')
+    function parseOutcome (params, who) {
         const source = params.source.split('|')
         return params.result.split('|').map(x => parseInt(x, 10)).reduce((m, r, i) => {
             m.result += r;
@@ -1552,12 +1649,14 @@ on("ready", () => {
         }, {result: 0, rolls: [], b: [], vals: {}, who})
     }
 
-    function getOnlinePlayers() {
+    // log('getOnlinePlayers')
+    function getOnlinePlayers () {
         const players = findObjs({type: 'player'})
         return players.filter(p => p.get('online'))
     }
 
-    function getParams(args, offset) {
+    // log('getParams')
+    function getParams (args, offset) {
         return args.slice(offset).reduce((m, x) => {
             const [key, value] = x.split(' ')
             m[key] = value;
@@ -1565,7 +1664,8 @@ on("ready", () => {
         }, {})
     }
 
-    function getNumericParams(args, offset) {
+    // log('getNumericParams')
+    function getNumericParams (args, offset) {
         return args.slice(offset).reduce((m, x) => {
             const [key, value] = x.split(' ')
             m[key] = parseInt(value, 10);
@@ -1573,14 +1673,16 @@ on("ready", () => {
         }, {})
     }
 
-    function getCommand(name, card) {
+    // log('getCommand')
+    function getCommand (name, card) {
         if ((state.QuestCrawl.config || {}).commands) {
             if (commands[name]) return commands[name](card)
         }
         return ''
     }
 
-    function chatCard(card, logEntry, name) {
+    // log('chatCard')
+    function chatCard (card, logEntry, name) {
         const handout = findObjs({type: 'handout', name: name})[0]
         return new Promise((resolve) => {
             handout.get("notes", (note) => {
@@ -1595,11 +1697,13 @@ on("ready", () => {
         })
     }
 
-    function checkQuestInParty(card) {
+    // log('checkQuestInParty')
+    function checkQuestInParty (card) {
         return getParty().some(c => c.suit1 === card.suit)
     }
 
-    function getPirateReach(card) {
+    // log('getPirateReach')
+    function getPirateReach (card) {
         return card.getAllNeighbors().reduce((m, c) => {
             if (c.id === 'Gap') {
                 c.getAllNeighbors().map((n) => {
@@ -1618,7 +1722,8 @@ on("ready", () => {
         }, [])
     }
     
-    function onPartyMoved(grid, obj) {
+    // log('onPartyMoved')
+    function onPartyMoved (grid, obj) {
         if (obj.get('pageid') !== Campaign().get('playerpageid')) {
             const page = getObj('page', Campaign().get('playerpageid'));
             return sendChat('QuestCrawl', `Party Token Moved on the wrong page. Use page ${page.get('name')}`)
@@ -1626,7 +1731,6 @@ on("ready", () => {
         if (!grid.get({x: 0, y: 0}).id) {
             return sendChat('QuestCrawl', 'Game is not running, please click the Start macro for instructions.');
         }
-        state.QuestCrawl.tokenid = obj.id
         const left = parseInt(obj.get("left"), 10)
         const top = parseInt(obj.get("top"), 10)
         const coord = toCoords(left, top)
@@ -1705,7 +1809,8 @@ on("ready", () => {
         });
     }
 
-    function getLastLogEntry(move = true) {
+    // log('getLastLogEntry')
+    function getLastLogEntry (move = true) {
         if (move) {
             return getMoveHistory().slice(0).pop()
         } else {
@@ -1714,11 +1819,13 @@ on("ready", () => {
         }
     }
 
-    function getCurrentCard(logEntry = getLastLogEntry()) {
+    // log('getCurrentCard')
+    function getCurrentCard (logEntry = getLastLogEntry()) {
         return grid.get(logEntry)
     }
 
-    function characterCommands(c) {
+    // log('characterCommands')
+    function characterCommands (c) {
         const commands = []
         checkForBandits(c, commands)
         checkForMaps(c, commands)
@@ -1729,7 +1836,8 @@ on("ready", () => {
         return commands.join(' ')
     }
 
-    function look() {
+    // log('look')
+    function look () {
         const logEntry = getLastLogEntry()
         const card = getCurrentCard()
         const name = (logEntry.asName || logEntry.name)
@@ -1743,7 +1851,7 @@ on("ready", () => {
 
     function checkForDiesInWilderness(params) {
         const card = getCurrentCard();
-        const nearQuest = card.getAllNeighbors().some(c => c.face === 'queen');
+        const nearQuest = card.getAllNeighbors().some(c => c.face === 'queen' && c.faceup);
         const party = getParty()
         return !party.some(c => {
             return c.suit1 === params.suit || 
@@ -1754,11 +1862,13 @@ on("ready", () => {
         })
     }
 
-    function getMoveHistory() {
+    // log('getMoveHistory')
+    function getMoveHistory () {
         return state.QuestCrawl.history.filter(x => x.type !== 'map');
     }
 
-    function onFarseeingEyeMoved(grid, obj) {
+    // log('onFarseeingEyeMoved')
+    function onFarseeingEyeMoved (grid, obj) {
         const left = parseInt(obj.get("left"), 10)
         const top = parseInt(obj.get("top"), 10)
         const coord = toCoords(left, top)
@@ -1817,12 +1927,8 @@ on("ready", () => {
             })
             logEvent(state.QuestCrawl.mapUser, `Discovered ${logEntry.name} at ${coord}.`)
             if (state.QuestCrawl.farSightRemaining <= 0) {
-                getPartyToken().set({
-                    layer: 'objects'
-                })
-                getFarseeingToken().set({
-                    layer: 'gmlayer'
-                })
+                getPartyToken().show()
+                getFarseeingToken().hide()
                 state.QuestCrawl.mapUser = null;
                 state.QuestCrawl.mapHistory = [];
                 state.QuestCrawl.config.commands = true
@@ -1830,7 +1936,8 @@ on("ready", () => {
         });
     }
 
-    function deleteRepeatingSectionRow(rowid, characterid) {
+    // log('deleteRepeatingSectionRow')
+    function deleteRepeatingSectionRow (rowid, characterid) {
         const regex = new RegExp(`^repeating_inventory_${rowid}_.*?`);
         const attrsInRow = filterObjs((obj) => {
             if (obj.get('type') !== 'attribute' || obj.get('characterid') !== characterid) return false;
@@ -1845,19 +1952,22 @@ on("ready", () => {
         });
     }
 
-    function whisperCharacter(player, who, args) {
+    // log('whisperCharacter')
+    function whisperCharacter (player, who, args) {
         const character = getCharacterJSON(player)
         sendChat('QuestCrawl', `/w ${who} You are playing: <b>[${character.name}](http://journal.roll20.net/character/${character.id})</b>`)
     }
 
-    function confirmCharacter(player, who, args) {
+    // log('confirmCharacter')
+    function confirmCharacter (player, who, args) {
         const {players} = state.QuestCrawl
         const params = getParams(args, 2)
         players[params.player] = params.character
         whisperCharacter(player, who, args)
     }
 
-    function configure(who, args) {
+    // log('configure')
+    function configure (who, args) {
         const params = getParams(args, 2)
         if (Object.keys(params).length === 0) {
             const co = {...state.QuestCrawl}
@@ -1875,7 +1985,8 @@ on("ready", () => {
         return;
     }
 
-    function resetBoard(deckid, resetHistory = true) {
+    // log('resetBoard')
+    function resetBoard (deckid, resetHistory = true) {
         return new Promise((res, rej) => {
             setTimeout(() => {
                 recallCards(deckid);
@@ -1900,6 +2011,7 @@ on("ready", () => {
                             state.QuestCrawl.spells = {};
                             state.QuestCrawl.motorhead = false;
                             delete state.QuestCrawl.factions;
+                            state.QuestCrawl.farSightRemaining = 0;
                             updateTracker();
                             resetConfig();
                             res(state.QuestCrawl)
@@ -1910,7 +2022,8 @@ on("ready", () => {
         })
     }
 
-    function forageResult(character, who, params) {
+    // log('forageResult')
+    function forageResult (character, who, params) {
         const outcome = parseOutcome(params);
         const {result} = outcome;
         if (result >= parseInt(params.challenge, 10)) {
@@ -1930,7 +2043,8 @@ on("ready", () => {
         discardBrokenItems(character, who, outcome);
     }
 
-    function ancientKnowledgeBonus(output) {
+    // log('ancientKnowledgeBonus')
+    function ancientKnowledgeBonus (output) {
         if ((state.QuestCrawl.artifacts || {}).ancient_knowledge) {
             output.source.push('ancient-knowledge')
             output.dice.push('1d6')
@@ -1938,7 +2052,8 @@ on("ready", () => {
         }
     }
 
-    function forage(character, who, args) {
+    // log('forage')
+    function forage (character, who, args) {
         const params = getParams(args, 2)
         if (params.result) {
             return forageResult(character, who, params)
@@ -1955,7 +2070,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} [${output.label} ${output.dice.length}d6]${getChallengeCommandArgs(character, 'forage', params, output)}`)
     }
 
-    function loot(character, who, args) {
+    // log('loot')
+    function loot (character, who, args) {
         const val = parseInt(args.slice(1)[0].split(' ')[1], 10)
         if (val < 3) {
             sendChat('QuestCrawl', `/w ${who} You rolled [[${val}]] and found no additional loot.`)
@@ -1975,11 +2091,13 @@ on("ready", () => {
 
     }
 
-    function renderOutcome(outcome) {
+    // log('renderOutcome')
+    function renderOutcome (outcome) {
         return `${outcome.rolls.map(r => `[[${r}]]`).join('+')} = [[${outcome.result}]]`
     }
 
-    function testShield(character, who, outcome) {
+    // log('testShield')
+    function testShield (character, who, outcome) {
         return new Promise((resolve, reject) => {
             if (character.items.indexOf('Enchanted Shield') > -1) {
                 const shield = randomInteger(6);
@@ -2000,7 +2118,8 @@ on("ready", () => {
         })
     }
 
-    function discardBrokenItems(character, who, outcome) {
+    // log('discardBrokenItems')
+    function discardBrokenItems (character, who, outcome) {
         if (outcome.b.length > 0) {
             outcome.b.forEach((b) => {
                 if (['enchanted-shield', 'magic-sword', 'holy-rod', 'elven-cloak', 'compass', 'survival-kit', 'mountaineering-gear'].indexOf(b) > -1) {
@@ -2012,7 +2131,8 @@ on("ready", () => {
         }
     }
 
-    function beastieResult(character, who, params) {
+    // log('beastieResult')
+    function beastieResult (character, who, params) {
         const outcome = parseOutcome(params)
         if (params.type !== 'faction') {
             if (outcome.result >= parseInt(params.challenge)) {
@@ -2047,7 +2167,8 @@ on("ready", () => {
         discardBrokenItems(character, who, outcome)
     }
 
-    function spellBonus(character, output) {
+    // log('spellBonus')
+    function spellBonus (character, output) {
         const caster = (state.QuestCrawl.spells || {})[character.id]
         if (caster) {
             output.dice.push('1d6')
@@ -2058,7 +2179,8 @@ on("ready", () => {
         }
     }
 
-    function itemBonus(itemKey, character, output) {
+    // log('itemBonus')
+    function itemBonus (itemKey, character, output) {
         const {name} = items[itemKey]
         if (character.items.indexOf(name) === -1) {
             return
@@ -2068,7 +2190,8 @@ on("ready", () => {
         output.label += `, with ${name}`;
     }
 
-    function beastie(character, who, args) {
+    // log('beastie')
+    function beastie (character, who, args) {
         const params = getParams(args, 2)
         if (params.result) {
             if (params.type === 'faction') {
@@ -2095,7 +2218,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
     }
 
-    function shop(character, who, args) {
+    // log('shop')
+    function shop (character, who, args) {
         let {currentMagicItem} = state.QuestCrawl
         const params = getParams(args, 2)
         const i = Object.keys(items)
@@ -2122,7 +2246,8 @@ on("ready", () => {
 
     }
 
-    function start() {
+    // log('start')
+    function start () {
         const players = getOnlinePlayers()
         const characters = findObjs({type: 'character'})
         players.forEach((p) => {
@@ -2137,10 +2262,47 @@ on("ready", () => {
                 })
                 sendChat('QuestCrawl', `/w ${who} or [Create A new Character](!questcrawl --create)`);
             }
-        })
+        });
+        state.QuestCrawl.config.commands = 1
+        getPartyToken().move({x: 0, y: 0})
     }
 
-    function createCharacter(who, player) {
+    // log('PartyToken')
+    function PartyToken (token) {
+        this.token = token;
+    }
+
+    PartyToken.prototype = {
+        hide: function () {
+            this.token.set({
+                layer: 'gmlayer'
+            })
+            return this;
+        },
+        show: function () {
+            this.token.set({
+                layer: 'objects'
+            })
+            return this;
+        },
+        set: function (...args) {
+            this.token.set.apply(this.token, args)
+            return this;
+        },
+        move: function (coord) {
+            const card = new GapCard({x:0,y:0})
+            const {mode} = state.QuestCrawl.config;
+            let screenPos = toScreenGrid(coord, card.cardSize)
+            if (mode === 'hexagon') {
+                screenPos = toScreenHex(coord, card.cardSize)
+            }
+            this.token.set(screenPos)
+            return this;
+        }
+    };
+
+    // log('createCharacter')
+    function createCharacter (who, player) {
         const name = `${who}'s Character`;
         const character = createObj('character', {
             name,
@@ -2174,7 +2336,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} [${name}](http://journal.roll20.net/character/${character.id}) Created, Click to Edit`);    
     }
     
-    function heal(character, who, args) {
+    // log('heal')
+    function heal (character, who, args) {
         const params = getNumericParams(args)
         const {players} = state.QuestCrawl
         if (character.treasure < params.cost) {
@@ -2228,7 +2391,25 @@ on("ready", () => {
         });
     }
 
-    function buy(character, who, args) {
+    // log('addEpitaphDay')
+    function addEpitaphDay (character, {day, events}) {
+        const rowKey = generateRowID()
+        const rowid = `repeating_history_${rowKey}`
+
+        createObj('attribute', {
+            name: `${rowid}_day`,
+            characterid: character.id,
+            current: day
+        });
+        createObj('attribute', {
+            name: `${rowid}_events`,
+            characterid: character.id,
+            current: events
+        });
+    }
+
+    // log('buy')
+    function buy (character, who, args) {
         const params = getNumericParams(args, 2)
         if (character.treasure < params.cost) {
             sendChat(`${params.cost === 4 ? 'Rogueish ' : ''}Shop Keep`, `/w ${who} You can't afford that right now, sorry.`)
@@ -2286,7 +2467,8 @@ on("ready", () => {
         item.setWithWorker({current: key})
     }
 
-    function twist(character, args) {
+    // log('twist')
+    function twist (character, args) {
         const {mode} = state.QuestCrawl.config;
         if (character.treasure < 1) {
             sendChat('QuestCrawl', `The Pyramid requires treasure to function.`)
@@ -2303,28 +2485,12 @@ on("ready", () => {
         }
         const pyramid = grid.get({x: parseFloat(x, 10), y: parseFloat(y, 10)})
         const map = twist === 'cc' ? ccPropMap : cPropMap;
-        pyramid.getAllNeighbors().forEach((ncard, i) => {
-            if (!ncard.id) {
-                return
-            }
-            const x = ncard.x + (map[i].x || 0);
-            const y = ncard.y + (map[i].y || 0)
-            grid.move(ncard, {x, y})
-            const g = getObj('graphic', ncard.id)
-            if (g) {
-                if (mode === 'original') {
-                    g.set({
-                        left: offset + (x * cardSize),
-                        top: offset + (y * cardSize)
-                    })
-                } else if (mode === 'hexagon') {
-                    g.set({
-                        left: hOffset + (x * ncard.cardSize.w),
-                        top: vOffset + (y * offsets.y),
-                    })
-                }
-            }
-        });
+        pyramid.getAllNeighbors().map((card, i) => {
+            const x = card.x + (map[i].x || 0);
+            const y = card.y + (map[i].y || 0)
+            grid.move(card, {x, y})
+            return card
+        }).forEach(c => grid.put(c));
         state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
         sendChat('QuestCrawl', `${character.name} has activated the twisting pyramid. The landscape shifts around you, the evil has become less powerful [${12 - state.QuestCrawl.evil}]!`)
         setAttrs(character.id, {
@@ -2332,7 +2498,8 @@ on("ready", () => {
         });    
     }
 
-    function generateIsland(deckid, args) {
+    // log('generateIsland')
+    function generateIsland (deckid, args) {
         if(grid.get({x:0,y:0}).cardid) {
             return;
         }
@@ -2392,7 +2559,8 @@ on("ready", () => {
         state.QuestCrawl.grid = grid.toJSON().map(c => c.toJSON());
     }
 
-    function canBecomeChampion(who, character) {
+    // log('canBecomeChampion')
+    function canBecomeChampion (who, character) {
         const {currentChampion} = state.QuestCrawl;
         if (currentChampion == null) {
             state.QuestCrawl.currentChampion = character.id
@@ -2408,7 +2576,8 @@ on("ready", () => {
         }
     }
 
-    function orbOfChaos(character, who, args) {
+    // log('orbOfChaos')
+    function orbOfChaos (character, who, args) {
         if (character.items.includes('Orb of Chaos')) {
             deleteRepeatingSectionRow(getItemRowId(character, 'Orb of Chaos'), character.id);
             sendChat('QuestCrawl', `/w ${who} Foolish mortal! You have meddled with dark forces, and now you must suffer!`)
@@ -2423,7 +2592,8 @@ on("ready", () => {
         }
     }
 
-    function injureParty(amount) {
+    // log('injureParty')
+    function injureParty (amount) {
         getParty().forEach(c => {
             setAttrs(c.id, {
                 injuries: Math.min(c.injuries + amount, c.injuries_max)
@@ -2436,7 +2606,8 @@ on("ready", () => {
         });
     }
 
-    function crisisResult(character, who, params) {
+    // log('crisisResult')
+    function crisisResult (character, who, params) {
         const card = getCurrentCard()
         const outcome = parseOutcome(params)
         const challenge = parseInt(params.challenge, 10)
@@ -2455,7 +2626,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely through the crisis, rolling ${renderOutcome(outcome)}.</h2>`)
     }
 
-    function suitBonus(character, params, output) {
+    // log('suitBonus')
+    function suitBonus (character, params, output) {
         if ([character.suit1, character.suit2].indexOf(params.suit) !== -1) {
             output.dice.push('1d6')
             output.source.push('suit')
@@ -2463,7 +2635,8 @@ on("ready", () => {
         }
     }
 
-    function holyRodBonus(character, output) {
+    // log('holyRodBonus')
+    function holyRodBonus (character, output) {
         if (character.items.indexOf('Holy Rod') !== -1) {
             const card = getCurrentCard()
 
@@ -2483,7 +2656,8 @@ on("ready", () => {
         }
     }
 
-    function clearchampion(character, who, args) {
+    // log('clearchampion')
+    function clearchampion (character, who, args) {
         const params = getParams(args, 1);
         if (state.QuestCrawl.currentChampion === params.clearchampion) {
             logEvent(character, 'Stepped down from a Champion Challenge.')
@@ -2492,7 +2666,8 @@ on("ready", () => {
         }
     }
 
-    function crisis(character, who, args) {
+    // log('crisis')
+    function crisis (character, who, args) {
 
         const params = getParams(args, 2);
         if (!canBecomeChampion(who, character)) {
@@ -2515,7 +2690,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party to safety. ${commands.join(' ')}`)    
     }
 
-    function climbResult(character, who, params) {
+    // log('climbResult')
+    function climbResult (character, who, params) {
         const {history, config} = state.QuestCrawl;
         const {mode} = config;
         const card = getCurrentCard()
@@ -2525,11 +2701,7 @@ on("ready", () => {
         if (challenge > outcome.result) {
             // move the party token, back to the previous tile
             const origin = getMoveHistory().slice(-2).shift()
-            let screenPos = toScreenGrid(origin, card.cardSize)
-            if (mode === 'hexagon') {
-                screenPos = toScreenHex(origin, card.cardSize)
-            }
-            getPartyToken().set(screenPos)
+            getPartyToken().move(origin);
             history.push(origin)
             logEvent(character, 'Attempted to climb a mountain, but was turned away. Returning to the place they left.')
             sendChat('QuestCrawl', `<h2 style='color: red;'>Your party was unable to scale the reaches, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). You return to where you left from.</h2>`)
@@ -2565,7 +2737,8 @@ on("ready", () => {
         discardBrokenItems(character, who, outcome)
     }
 
-    function dwarves() {
+    // log('dwarves')
+    function dwarves () {
         const comms = []
         if ((state.QuestCrawl.factions || {}).dwarves === 1) {
             comms.push('[Continue Fighting the Dwarves](!questcrawl --beastie --suit hearts --challenge 8 --type faction)')
@@ -2584,7 +2757,8 @@ on("ready", () => {
 
     }
 
-    function climb(character, who, args) {
+    // log('climb')
+    function climb (character, who, args) {
         const params = getParams(args, 1);
         params.challenge = 5;
         if (!canBecomeChampion(who, character)) {
@@ -2606,7 +2780,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party up the mountain. ${commands.join(' ')}`)
     }
 
-    function hardlandsResult(character, who, params) {
+    // log('hardlandsResult')
+    function hardlandsResult (character, who, params) {
         const outcome = parseOutcome(params)
         const challenge = parseInt(params.challenge, 10)
         state.QuestCrawl.currentChampion = null
@@ -2622,7 +2797,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the hard lands (${renderOutcome(outcome)}). End the turn and move tomorrow.</h2>`)
     }
 
-    function hardlands(character, who, args) {
+    // log('hardlands')
+    function hardlands (character, who, args) {
         const params = getParams(args, 2);
         if (!canBecomeChampion(who, character)) {
             return
@@ -2650,7 +2826,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party out of these hardlands. ${commands.join(' ')}`)
     }
 
-    function megabeastResult(character, who, params) {
+    // log('megabeastResult')
+    function megabeastResult (character, who, params) {
         const outcome = parseOutcome(params)
         const challenge = parseInt(params.challenge, 10)
         state.QuestCrawl.currentChampion = null
@@ -2675,7 +2852,8 @@ on("ready", () => {
         }
     }
 
-    function megabeast(character, who, args) {
+    // log('megabeast')
+    function megabeast (character, who, args) {
         const params = getParams(args, 2);
         if (!canBecomeChampion(who, character)) {
             return
@@ -2696,7 +2874,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party in your escape from the Megabeast. ${commands.join(' ')}`)
     }
 
-    function claim(character, who, args) {
+    // log('claim')
+    function claim (character, who, args) {
         const params = getParams(args, 1);
         const fn = state.QuestCrawl[params.claim]
         if (!fn) {
@@ -2706,7 +2885,8 @@ on("ready", () => {
         return fn(character, who, params.item)
     }
 
-    function tunnel(character, who, args) {
+    // log('tunnel')
+    function tunnel (character, who, args) {
         const params = getParams(args, 2);
         const {mountains, config} = state.QuestCrawl;
         const {mode} = config;
@@ -2716,12 +2896,7 @@ on("ready", () => {
                 return;
             }
             const target = mountains[params.destination.split('-').join(' ')]
-            const card = grid.get(target)
-            if (mode === 'original') {
-                getPartyToken().set(toScreenGrid(target, card.cardSize))
-            } else if (mode === 'hexagon') {
-                getPartyToken().set(toScreenHex(target, card.cardSize))
-            }
+            getPartyToken().move(target)
             state.QuestCrawl.history.push(target)
             if (params.cost) {
                 setAttrs(character.id, {
@@ -2743,7 +2918,8 @@ on("ready", () => {
         sendChat('QuestCrawl', `Select your destination: ${commands.join(' ')}`)
     }
 
-    function map(character, who, args) {
+    // log('map')
+    function map (character, who, args) {
         state.QuestCrawl.config.commands = false
         state.QuestCrawl.mapUser = character
         const params = getNumericParams(args, 1);
@@ -2760,13 +2936,8 @@ on("ready", () => {
         setAttrs(character.id, {
             treasure: character.treasure - params.cost
         });
-        const partyToken = getPartyToken()
-        const farseeingToken = getFarseeingToken()
-        partyToken.set({
-            layer: 'gmlayer'
-        });
-        farseeingToken.set({
-            layer: 'objects',
+        getPartyToken().hide()
+        getFarseeingToken().show().set({
             bar2_value: params.map,
             bar2_max: params.map
         })
@@ -2774,7 +2945,8 @@ on("ready", () => {
 
     }
 
-    function getCharacterHistory(character) {
+    // log('getCharacterHistory')
+    function getCharacterHistory (character) {
         return state.QuestCrawl.history.filter(l => l.day != null).reduce((m, logEntry) => {
             const theDay = (logEntry.events || []).filter((e) => {
                 return e.character === character.name || !e.character;
@@ -2790,14 +2962,37 @@ on("ready", () => {
         }, [])
     }
 
-    function characterlog(character, who, args) {
+    // log('characterlog')
+    function characterlog (character, who, args) {
         
         const logs = getCharacterHistory(character);
 
         sendChat('QuestCrawl', `/w ${who} <ul><li>${logs.map(l => `${l.day}${l.events}`).join('</li><li>')}</li></ol>`)
     }
 
+    // log('changeMode')
+    function changeMode (mode = 'original') {
+        state.QuestCrawl.config.mode = mode;
+        const page = getObj('page', Campaign().get('playerpageid'));
+        page.set({
+            grid_type: mode === 'original' ? 'square' : 'hex'
+        }, {silent: true})
+        const otherDeck = findObjs({type: 'deck', name: (mode === 'original' ? 'QuestCrawlHex' : 'QuestCrawl') })[0];
+
+        state.QuestCrawl.config.deck = (mode === 'original' ? 'QuestCrawl' : 'QuestCrawlHex')
+        currentDeck = findObjs({type: 'deck', 'name': state.QuestCrawl.config.deck})[0];
+        state.QuestCrawl.config.deckid = currentDeck.id
+
+        currentDeck.set({
+            shown: true
+        });
+        otherDeck.set({
+            shown: false
+        })
+    }
+
     on("chat:message", (msg) => {
+        // log('chat message received')
         const logEntry = getLastLogEntry();
         logEntry.events = logEntry.events || []
         if ( msg.type === 'general' && msg.playerid !== 'API') {
@@ -2982,18 +3177,12 @@ on("ready", () => {
             return orbOfChaos(character, who, args);
         }
 
-        if(args.find(n=>/^resetkey(\b|$)/i.test(n))){
-            const params = getParams(args);
-            state.QuestCrawl.quests[params.resetkey] = null
-            return
+        if(args.find(n=>/^mode(\b|$)/i.test(n))){
+            const params = getParams(args, 1)
+            log(`changing mode ${params.mode || 'original'}`)
+            return changeMode(params.mode || 'original');
         }
 
-        if(args.find(n=>/^unblank(\b|$)/i.test(n))){
-            const params = getParams(args);
-            grid.toJSON().find(c => c.face = params.face && c.suit === params.suit).blank = false
-            return
-        }
-        
         sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
     });
 
@@ -3008,12 +3197,24 @@ on("ready", () => {
     })
 
     on('change:attribute', (attribute) => {
-        const name = attribute.get('name')
-        const current = attribute.get('current')
-        if (name === 'mode' && current === 'graveyard') {
-            const character = new Character(attribute.get('characterid'))
-            logEvent(character, 'Succumbed to their Injuries.')
-            getCharacterHistory(character).forEach((l) => addEpitaphDay(character, l))
+        const character = new Character(attribute.get('characterid'))
+        log(character)
+        if (character.mode === 'graveyard') {
+            if (getEpitaph(character).length > 0) {
+                return;
+            } else {
+                logEvent(character, 'Succumbed to their Injuries.')
+                getCharacterHistory(character).forEach((l) => addEpitaphDay(character, l))
+            }
+        }
+    })
+
+    on('destroy:graphic', (obj) => {
+        if (obj.get('name') === 'Party') {
+            PartyToken.Party = null;
+        }
+        if (obj.get('name') === 'Farseeing Eye') {
+            PartyToken.Eye = null;
         }
     })
 })
