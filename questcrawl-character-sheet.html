@@ -45,8 +45,7 @@
                     <span name="attr_character_name"></span>
                 </div>
                 <div class="cell">
-                    <span>Age:</span>
-                    <span name="attr_days"></span> days.
+                    Adventuring for <span name="attr_days"></span> days.
                 </div>
                 <div class="cell">
                     <span>Suit:</span>
@@ -94,7 +93,7 @@
                         <option value="mountaineering-gear">Mountaineering Gear</option>
                         <option value="survival-kit">Survival Kit</option>
                         <option value="map">Map</option>
-                        <option value="healing-herb">Healing Herb</option>
+                        <option value="healing-herbs">Healing Herbs</option>
                         <option value="rabbits-foot">Rabbit's Foot</option>
                         <option value="magic-sword">Magic Sword</option>
                         <option value="enchanted-shield">Enchanted Shield</option>
@@ -124,7 +123,7 @@
     <div class="graveyard">
         Here Lies <span name="attr_character_name"></span>. They adventured for <span name="attr_days"></span> days.
         <fieldset class="repeating_history">
-            In <span name="attr_territory"></span> they <span name="attr_action"></span>.
+            On <span name="attr_day"></span>, <span name="attr_character_name"></span> <span name="attr_events"></span>.
         </fieldset>
         They leave behind <span name="attr_supplies"></span> supplies and <span name="attr_treasure"></span> treasure.
         To their fellows they offer:
@@ -156,11 +155,12 @@
         "map": {
             img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_treasure_map_on_parchment_f58680e5-7efd-414c-883f-553bf2d05a15.png",
             name: "Map",
-            description: "Discard to roll a die. Flip that many distant Territories that are connected."
+            description: "Discard to roll a die. Flip that many distant Territories that are connected.",
+            use: '!questcrawl --map [[1d6]]'
         },
-        "healing-herb": {
+        "healing-herbs": {
             img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_healing_herbs_bundle_7158ff24-d8b8-41ea-b7cd-58b9523cd9c6.png",
-            name: "Healing Herb",
+            name: "Healing Herbs",
             description: "Discard to remove 1 Injury."
         },
         "rabbits-foot": {
@@ -459,6 +459,7 @@
         removeRepeatingRow(sourceAttribute.replace("_discarditem", ""))
         clamp_inventory()
     })
+
     on("change:supplies", clamp_supplies);
     on("change:max_supplies", clamp_supplies)
     on("change:treasure", clamp_treasure)

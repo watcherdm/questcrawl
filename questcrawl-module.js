@@ -54,8 +54,9 @@ on("ready", () => {
     // log('bookofspells')
     function bookofspells (character, who, args) {
         const params = getParams(args, 1)
-        const target = getObj('character', params.bookofspells)
-        logEvent(character, `Cast a spell from the Book of Spells on ${target.get('name')}`)
+        const target = getParty().find(c => c.id === params.bookofspells)
+        logEvent(character, `Cast a spell from the Book of Spells on ${target._name}`)
+        sendChat('QuestCrawl', `${character.name} withers visibly as they cast a spell on ${target.name}. They took 1 Injury.`)
         setAttrs(character.id, {
             injuries: Math.min(character.injuries + 1, character.injuries_max)
         });
@@ -63,6 +64,10 @@ on("ready", () => {
             state.QuestCrawl.spells = {}
         }
         state.QuestCrawl.spells[params.bookofspells] = character.id
+        const commands = []
+        checkForHealingHerbs(character, commands)
+        checkForHolyRod(character, commands)
+        sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
     }
 
     // log('checkArtifacts')
@@ -607,7 +612,7 @@ on("ready", () => {
     }
 
     function getEpitaph(character) {
-        const history = filterObjs((obj) => {
+        return filterObjs((obj) => {
             if(obj.get("type") === 'attribute' && obj.get('characterid') === character.id &&
                  obj.get('name').indexOf('repeating_history') > -1) return true;})
     }
@@ -617,9 +622,7 @@ on("ready", () => {
         state.QuestCrawl.day++;
         getLastLogEntry().day = state.QuestCrawl.day
         state.QuestCrawl.grid = grid.toJSON().map(c => c && c.toJSON());
-        const players = getOnlinePlayers();
-        players.forEach((player) => {
-            const character = getCharacterJSON(player)
+        getParty().forEach((character) => {
             if (getAttrByName(character.id, 'mode') === 'graveyard') {
                 if ((getEpitaph(character) || []).length > 0) {
                     return;
@@ -639,6 +642,11 @@ on("ready", () => {
             }
             output.supplies = Math.max(character.supplies - (1 + character.injuries), 0)
             output.days += 1
+            sendChat('QuestCrawl', `${character.name} has used ${output.supplies - character.supplies} Supplies and added ${output.injuries - character.injuries} Injuries.`)
+            const commands = []
+            checkForHealingHerbs(character, commands)
+            checkForHolyRod(character, commands)
+            sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
             setAttrs(character.id, output);
         });
         sendChat('QuestCrawl', `<hr/>Day ${state.QuestCrawl.day} is over, supplies have been removed.`)
@@ -1050,7 +1058,8 @@ on("ready", () => {
     function getPartyToken () {
         if (!PartyToken.Party) {
             PartyToken.Party = getCoreToken()
-            PartyToken.Party.move({x:0,y:0})
+            const lastEntry = getMoveHistory().slice(-1)[0]
+            PartyToken.Party.move(lastEntry)
         }
         return PartyToken.Party
     }
@@ -1148,7 +1157,7 @@ on("ready", () => {
     }
 
     // log('Character')
-    function Character (id) {
+    function Character (id, color) {
         this.id = id;
         this.system = getObj('character', id);
         this.itemIds = getCharacterItems(id)
@@ -1158,7 +1167,8 @@ on("ready", () => {
         this.suit2 = getAttrByName(id, 'second_suit')
         this.mode = getAttrByName(id, 'mode')
         this.quest = getAttrByName(id, 'quest')
-        this.name = getAttrByName(id, 'character_name')
+        this._name = getAttrByName(id, 'character_name')
+        this.name = `<span style='color: ${color};'>${this._name}</span>`
         this.treasure = parseInt(getAttrByName(id, 'treasure'), 10)
         this.treasure_max = parseInt(getAttrByName(id, 'max_treasure'), 10)
         this.injuries = parseInt(getAttrByName(id, 'injuries'), 10)
@@ -1173,7 +1183,7 @@ on("ready", () => {
     function getCharacterJSON (player) {
         const id = getCharacterId(player)
         const who = player.get('displayname')
-        const character = new Character(id)
+        const character = new Character(id, player.get('color'))
         character.who = who;
         return character;
     }
@@ -1287,7 +1297,7 @@ on("ready", () => {
             name: "Map",
             description: "Discard to roll a die. Flip that many distant Territories that are connected."
         },
-        "healing-herb": {
+        "healing-herbs": {
             img: "https://questcrawl.com/wp-content/uploads/2022/08/watcherdm_healing_herbs_bundle_7158ff24-d8b8-41ea-b7cd-58b9523cd9c6.png",
             name: "Healing Herbs",
             description: "Discard to remove 1 Injury."
@@ -1430,10 +1440,11 @@ on("ready", () => {
                 sendChat('QuestCrawl', `/w ${who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
             }
 
-            const commands = [];
+            const commands = []
             checkForHealingHerbs(character, commands)
+            checkForHolyRod(character, commands)
             if (commands.length > 0) {
-                sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+                sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
             }
         }
 
@@ -1566,10 +1577,11 @@ on("ready", () => {
                         sendChat('QuestCrawl', `/w ${who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
                     }
         
-                    const commands = [];
+                    const commands = []
                     checkForHealingHerbs(character, commands)
+                    checkForHolyRod(character, commands)
                     if (commands.length > 0) {
-                        sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+                        sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
                     }
                 }
         
@@ -1644,11 +1656,12 @@ on("ready", () => {
                             setAttrs(c.id, {
                                 injuries: Math.min(c.injuries + 1, c.injuries_max)
                             });
-                            const commands = [];
+                            const commands = []
                             checkForHealingHerbs(character, commands)
+                            checkForHolyRod(character, commands)
                             if (commands.length > 0) {
-                                sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
-                            }            
+                                sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
+                            }
                         }
                         return `${c.name} rolled ${renderOutcome(battlefield[c.id])}, ${isSuccess ? 'a success' : 'a failure'}.`
                     });
@@ -1920,7 +1933,7 @@ on("ready", () => {
         const coord = toCoords(left, top)
         const {mapHistory, config} = state.QuestCrawl;
         let card = grid.get(coord)
-        if (card.id === 'Gap') {
+        if (card.id === 'Gap' || !card) {
             return;
         }
         const logEntry = Object.assign({type: 'map'}, card.toJSON())
@@ -2182,15 +2195,15 @@ on("ready", () => {
                 sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and was defeated by the Terrible Beastie!`)
                 if (character.items.includes('Enchanted Shield')) {
                     sendChat('QuestCrawl', `/w ${who} [Take the Damage](!questcrawl --em accepts defeat, keeping their Injury) [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`, null, {use3d: true})
-                    return
                 }
                 sendChat('QuestCrawl', `${character.name} took 1 Injury`)
-                const commands = [];
+                const commands = []
                 checkForHealingHerbs(character, commands)
+                checkForHolyRod(character, commands)
                 if (commands.length > 0) {
-                    sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+                    sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
                 }
-        }
+            }
         } else {
             const card = getCurrentCard()
             factions.result[card.suit](character, who, card, params, outcome)
@@ -2258,7 +2271,9 @@ on("ready", () => {
         if (params.type === 'magic') {
             sendChat('Rogueish Shop Keep', `/w ${who} 
                 ${magicItems.map((m) => {
-                    return `[Buy 1 ${m.name}: 4 Treasure](!questcrawl --buy --item ${m.id} --cost 4)`;
+                    const name = m.name;
+                    const handout = findObjs({ type: 'handout', name: name })[0]
+                    return `[${name}](http://journal.roll20.net/handout/${handout.id}) [Buy 1 for 4 Treasure](!questcrawl --buy --item ${m.id} --cost 4)`;
                 }).join('\n')}
             `);
             
@@ -2398,7 +2413,7 @@ on("ready", () => {
     }
 
     const itemCommands = {
-        'healing-herb': (c, key) => `[Use Healing Herbs](!questcrawl --heal 1 --cost 0 --removeitem ${key})`,
+        'healing-herbs': (c, key) => `[Use Healing Herbs](!questcrawl --heal 1 --cost 0 --removeitem ${key})`,
         'map': (c, key) => `[Use Map](!questcrawl --map &#91;[1d6]&#93; --cost 0 --removeitem ${key})`,
         'orb-of-chaos': (c, key) => `[Activate the Orb of Chaos](!questcrawl --orbofchaos --removeitem ${key})`,
         'dwarven-tunnel-passport': (c, key) => {
@@ -2624,15 +2639,19 @@ on("ready", () => {
     }
 
     // log('injureParty')
-    function injureParty (amount) {
-        getParty().forEach(c => {
-            setAttrs(c.id, {
-                injuries: Math.min(c.injuries + amount, c.injuries_max)
+    function injureParty (amount, callback) {
+        getParty().forEach(character => {
+            setAttrs(character.id, {
+                injuries: Math.min(character.injuries + amount, character.injuries_max)
             });
-            const commands = [];
-            checkForHealingHerbs(c, commands)
+            const commands = []
+            checkForHealingHerbs(character, commands)
+            checkForHolyRod(character, commands)
             if (commands.length > 0) {
-                sendChat('QuestCrawl', `/w ${c.who} ${commands.join(' ')}`)
+                sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
+            }
+            if (callback) {
+                callback()
             }
         });
     }
@@ -2650,13 +2669,6 @@ on("ready", () => {
             logEvent(character, `Failed to lead the party out of a crisis. ${renderOutcome(outcome)}`)
             logPartyEvent('Became injured in a crisis.')
             sendChat('QuestCrawl', `Safety could not be found, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). Everyone takes 1 injury.`)
-
-            const commands = [];
-            checkForHealingHerbs(character, commands)
-            if (commands.length > 0) {
-                sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
-            }
-
             return
         }
         discardBrokenItems(character, who, outcome)
@@ -2873,10 +2885,9 @@ on("ready", () => {
         if (challenge > outcome.result) {
             logEvent('Hunted down by the Megabeast, everyone took 2 Injuries.')
             sendChat('QuestCrawl', `Your party has been found by the Megabeast, despite ${character.name}'s effort (${renderOutcome(outcome)}). Everyone takes 2 injuries!`)
-            getParty().forEach(c => {
-                setAttrs(c.id, {injuries: Math.min(c.injuries + 2, c.injuries_max)});
-                if (c.items.includes('Enchanted Shield')) {
-                    sendChat('QuestCrawl', `/w ${who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
+            injureParty(2, (character) => {
+                if (character.items.includes('Enchanted Shield')) {
+                    sendChat('QuestCrawl', `/w ${character.who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
                 }
             })
             return
