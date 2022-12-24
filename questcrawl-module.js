@@ -142,7 +142,7 @@ on("ready", () => {
 
     // log('checkForHealingHerbs')
     function checkForHealingHerbs (c, commands) {
-        if (c.items.indexOf('Healing Herbs') !== -1 && c.injuries > 0) {
+        if (c.items.includes('Healing Herbs') && c.injuries > 0) {
             commands.push(`[Heal an Injury with Herbs](!questcrawl --heal 1 --cost 0 --removeitem ${getItemRowId(c, 'Healing Herbs')})`)
         }
     }
@@ -575,6 +575,10 @@ on("ready", () => {
         if (!state.QuestCrawl.artifacts) {
             state.QuestCrawl.artifacts = {};
         }
+        if (!state.QuestCrawl.megabeasts) {
+            state.QuestCrawl.megabeasts = {};
+        }
+
         if (!state.QuestCrawl.quests) {
             state.QuestCrawl.quests = {};
         }
@@ -612,12 +616,12 @@ on("ready", () => {
     function endTurn () {
         state.QuestCrawl.day++;
         getLastLogEntry().day = state.QuestCrawl.day
-        state.QuestCrawl.grid = grid.toJSON().map(c => c.toJSON());
+        state.QuestCrawl.grid = grid.toJSON().map(c => c && c.toJSON());
         const players = getOnlinePlayers();
         players.forEach((player) => {
             const character = getCharacterJSON(player)
             if (getAttrByName(character.id, 'mode') === 'graveyard') {
-                if (getEpitaph(character).length > 0) {
+                if ((getEpitaph(character) || []).length > 0) {
                     return;
                 } else {
                     getCharacterHistory(character).forEach((l) => addEpitaphDay(character, l))
@@ -637,7 +641,7 @@ on("ready", () => {
             output.days += 1
             setAttrs(character.id, output);
         });
-        sendChat('QuestCrawl', `<h1>Day ${state.QuestCrawl.day} is over, supplies have been removed.</h1>`)
+        sendChat('QuestCrawl', `<hr/>Day ${state.QuestCrawl.day} is over, supplies have been removed.`)
         updateTracker();
     }
 
@@ -847,8 +851,10 @@ on("ready", () => {
             const name = this.name
             if (remote) {
                 if (name.indexOf('Nine') === 0) {
-                    sendChat('QuestCrawl', `${name} is a Crisis, and will be returned to the face down position.`)
-                    setTimeout(this.flip.bind(this), 3000)
+                    setTimeout(() => {
+                        sendChat('QuestCrawl', `${name} is a Crisis, flipping back down.`)
+                        this.flip()
+                    }, 3000)
                 }
             }
             if (name.indexOf('Ace') === 0 || name === 'King of Hearts') {
@@ -966,8 +972,10 @@ on("ready", () => {
             return Object.values(this.internal)
         },
         move: function(card, coords) {
-            this.remove(card)
-            card.move(coords)
+            if (card.getCoordString) {
+                this.remove(card)
+                card.move(coords)    
+            }
         }
     }
 
@@ -1208,7 +1216,7 @@ on("ready", () => {
                 if (a.indexOf('rabbitsfoot') === 0) {
                     return m;
                 }
-                if (a.indexOf('result') === 0) {
+                if (a.indexOf(params.rabbitsfoot) === 0) {
                     rollsCopy.splice(i, 1, '&#91;[1d6]&#93;')
                     const replacedResult = ` --${params.rabbitsfoot} ${rollsCopy.join('|')}`
                     return m + replacedResult;
@@ -1229,10 +1237,28 @@ on("ready", () => {
 
     // log('rabbitsFoot')
     function rabbitsFoot (character, command, key='result') {
-        if (character.items.indexOf("Rabbit's Foot") !== -1) {
+        if (character.items.includes("Rabbit's Foot")) {
             return command.replace(/!questcrawl /, `!questcrawl --rabbitsfoot ${key} `);
         }
         return command;
+    }
+
+    // log('enchantedShieldResult)
+    function enchantedShieldResult (character, who, args) {
+        const params = getNumericParams(args, 1);
+        const shield = params.enchantedshield
+        if (shield > 3) {
+            sendChat('QuestCrawl', `${character.name} raised their Enchanted Shield</em> (${shield}), preventing 1 <em>Injury.`)
+            return setAttrs(character.id, {
+                injuries: Math.max(character.injuries - 1, 0)
+            })
+        } else if (shield === 1) {
+            const outcome = {
+                b: ['enchanted-shield']
+            }
+            discardBrokenItems(character, who, outcome)
+        }
+        sendChat('QuestCrawl', `${character.name} raised their Enchanted Shield</em> too late (${shield}), failing to prevent 1 <em>Injury.`)
     }
 
     const items = {
@@ -1347,19 +1373,21 @@ on("ready", () => {
     function distributeFactionReward (key) {
         const party = getParty();
         let treasure = 5
+        const distribution = {}
         // treasure handed out
         while (treasure > 0) {
             const c = party.shift();
-            c.treasure = Math.min(c.treasure_max, c.treasure + 1)
-            setAttrs(c.id, {
-                treasure: c.treasure,
-            });
+            distribution[c.id] = distribution[c.id] || 0
+            distribution[c.id] ++
             treasure--;
             party.push(c);
         }
+
         party.forEach(c => {
+            sendChat('QuestCrawl', `${c.name} gained 10 Supplies and ${distribution[c.id]} Treasure.`)
             setAttrs(c.id, {
-                supplies: Math.min(c.supplies_max, c.supplies + 10)
+                supplies: Math.min(c.supplies_max, c.supplies + 10),
+                treasure: Math.min(c.treasure + distribution[c.id], c.treasure_max)
             })
         });
         if (key === 'elves') {
@@ -1387,22 +1415,26 @@ on("ready", () => {
     function handleFactionResult (character, who, card, params, outcome, key, name) {
         const {battlefield} = state.QuestCrawl
         if (battlefield[character.id] !== 0) {
-            sendChat('QuestCrawl', `/w ${who} You have already resolved your challenge here. ${renderOutcome(outcome)}`);
+            sendChat('QuestCrawl', `/w ${who} You have already resolved your challenge here. ${renderOutcome(battlefield[character.id])}`);
             return
         }
         if (outcome.result < params.challenge) {
-            testShield(character, who, outcome).then(() => {
-                // defended by shield
-            }, () => {
-                setAttrs(character.id, {
-                    injuries: Math.min(character.injuries + 1, character.injuries_max)
-                });
-                const commands = [];
-                checkForHealingHerbs(character, commands)
-                if (commands.length > 0) {
-                    sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
-                }
-            })
+            sendChat('QuestCrawl', `${character.name} has rolled ${renderOutcome(outcome)} and has taken 1 Injury in the battle against ${name}.`)
+            setAttrs(character.id, {
+                injuries: Math.min(character.injuries + 1, character.injuries_max)
+            });
+
+            logEvent(character, `Was defeated by the ${name}. ${renderOutcome(outcome)}`);
+
+            if (character.items.includes('Enchanted Shield')) {
+                sendChat('QuestCrawl', `/w ${who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
+            }
+
+            const commands = [];
+            checkForHealingHerbs(character, commands)
+            if (commands.length > 0) {
+                sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+            }
         }
 
         battlefield[character.id] = outcome
@@ -1518,6 +1550,29 @@ on("ready", () => {
             },
             spades: (character, who, card, params, outcome) => {
                 const {battlefield} = state.QuestCrawl;
+                if (battlefield[character.id] !== 0) {
+                    sendChat('QuestCrawl', `/w ${who} You have already resolved your challenge here. ${renderOutcome(battlefield[character.id])}`);
+                    return
+                }
+                if (outcome.result < params.challenge) {
+                    sendChat('QuestCrawl', `${character.name} has rolled ${renderOutcome(outcome)} and has taken 1 Injury in the battle against the Unearthed Evil.`)
+                    setAttrs(character.id, {
+                        injuries: Math.min(character.injuries + 1, character.injuries_max)
+                    });
+        
+                    logEvent(character, `Was defeated by the Unearthed Evil. ${renderOutcome(outcome)}`);
+        
+                    if (character.items.includes('Enchanted Shield')) {
+                        sendChat('QuestCrawl', `/w ${who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
+                    }
+        
+                    const commands = [];
+                    checkForHealingHerbs(character, commands)
+                    if (commands.length > 0) {
+                        sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+                    }
+                }
+        
                 battlefield[character.id] = outcome;
                 const party = getParty();
                 if (party.some(c => battlefield[c.id] === 0)) {
@@ -1531,21 +1586,12 @@ on("ready", () => {
                         const isSuccess = result >= params.challenge
                         if (isSuccess) { 
                             successes++ 
-                        } else {
-                            setAttrs(c.id, {
-                                injuries: Math.min(c.injuries + 1, c.injuries_max)
-                            });
-                            const commands = [];
-                            checkForHealingHerbs(character, commands)
-                            if (commands.length > 0) {
-                                sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
-                            }            
                         }
                         return `${c.name} rolled ${renderOutcome(battlefield[c.id])}, ${isSuccess ? 'a success' : 'a failure'}.`
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
-                    sendChat('QuestCrawl', `<h3>The battle with the Unearthed Evil is over. ${battlereport.join(' ')}</h3>`)
+                    sendChat('QuestCrawl', `The battle with the Unearthed Evil is over. ${battlereport.join(' ')}`)
                     if (won) {
                         card.makeBlank()
                         state.QuestCrawl.magicItem = function (character, who, item) {
@@ -1573,7 +1619,7 @@ on("ready", () => {
                         sendChat('QuestCrawl', '[Claim a Random Magic Item](!questcrawl --claim magicItem --item &#91;[1d6+7]&#93;) [Claim the Vault Key](!questcrawl --claim vaultKey --item 17) [Claim the Orb of Chaos](!questcrawl --claim orbOfChaos --item 18)');
                         state.QuestCrawl.factions.unearthed_evil = 2;
                     } else {
-                        sendChat('QuestCrawl', '<h3 style="color: red;">Your party has failed to defeat the Unearthed Evil, you have been chased off.</h3>');
+                        sendChat('QuestCrawl', 'Your party has failed to defeat the Unearthed Evil, you have been chased off.');
                     }
                     state.QuestCrawl.battlefield = null;
                     state.QuestCrawl.preventMove = false;
@@ -1608,12 +1654,12 @@ on("ready", () => {
                     });
                     const won = successes >= victory;
                     battlereport.push(`${ won ? 'A Victory!' : 'A Defeat!'}`)
-                    sendChat('QuestCrawl', `<h3>The battle with the End Beast is over. ${battlereport.join(' ')}</h3>`)
+                    sendChat('QuestCrawl', `The battle with the End Beast is over. ${battlereport.join(' ')}`)
                     if (won) {
                         state.QuestCrawl.factions.endbeast = 2
                         sendChat('QuestCrawl', '<h1>Your party has saved the realm! The End Beast is no more! GAME OVER!</h1>')
                     } else {
-                        sendChat('QuestCrawl', '<h3>Your party has failed to defeat the End Beast this time. [Try Again!](!questcrawl --look)</h3>')
+                        sendChat('QuestCrawl', 'Your party has failed to defeat the End Beast this time. [Try Again!](!questcrawl --look)')
                     }
                     state.QuestCrawl.battlefield = null;
                     state.QuestCrawl.preventMove = false;
@@ -1874,6 +1920,9 @@ on("ready", () => {
         const coord = toCoords(left, top)
         const {mapHistory, config} = state.QuestCrawl;
         let card = grid.get(coord)
+        if (card.id === 'Gap') {
+            return;
+        }
         const logEntry = Object.assign({type: 'map'}, card.toJSON())
         if (!card.cardid || card.id === 'Gap') {
             const oldPrevent = state.QuestCrawl.preventMove
@@ -2009,6 +2058,7 @@ on("ready", () => {
                             state.QuestCrawl.quests = {};
                             state.QuestCrawl.mountains = {};
                             state.QuestCrawl.spells = {};
+                            state.QuestCrawl.megabeasts = {};
                             state.QuestCrawl.motorhead = false;
                             delete state.QuestCrawl.factions;
                             state.QuestCrawl.farSightRemaining = 0;
@@ -2074,19 +2124,22 @@ on("ready", () => {
     function loot (character, who, args) {
         const val = parseInt(args.slice(1)[0].split(' ')[1], 10)
         if (val < 3) {
-            sendChat('QuestCrawl', `/w ${who} You rolled [[${val}]] and found no additional loot.`)
+            logEvent(character, 'Failed to find any loot.')
+            sendChat('QuestCrawl', `${character.name} rolled [[${val}]] for loot and found no additional loot.`)
         } else if (val < 5) {
             logEvent(character, 'Looted a common item.')
-            sendChat('QuestCrawl', `/w ${who} You rolled [[${val}]] [Get a Random Common Item](!questcrawl --buy --item &#91;[1d6+1]&#93; --cost 0)`)
+            sendChat('QuestCrawl', `${character.name} rolled [[${val}]] for loot. Getting a random Common Item.`)
+            sendChat('QuestCrawl', `/w ${who} [Get a Random Common Item](!questcrawl --buy --item &#91;[1d6+1]&#93; --cost 0)`)
         } else if (val < 6) {
             logEvent(character, 'Looted additional treasure.')
-            sendChat('QuestCrawl', `/w ${who} You rolled [[${val}]] and have found 1 additional <em>Treasure</em>!`)
+            sendChat('QuestCrawl', `${character.name} rolled [[${val}]] for loot and found 1 additional Treasure!`)
             setAttrs(character.id, {
                 treasure: Math.min(character.treasure_max, character.treasure + 1)
             });
         } else {
             logEvent(character, 'Looted a Magic Item.')
-            sendChat('QuestCrawl', `/w ${who} You rolled [[${val}]] [Get a Random Magic Item](!questcrawl --buy --item &#91;[1d6+7]&#93; --cost 0)`)
+            sendChat('QuestCrawl', `${character.name} rolled [[${val}]] for loot. Getting a random Magic Item.`)
+            sendChat('QuestCrawl', `/w ${who} [Get a Random Magic Item](!questcrawl --buy --item &#91;[1d6+7]&#93; --cost 0)`)
         }
 
     }
@@ -2096,28 +2149,6 @@ on("ready", () => {
         return `${outcome.rolls.map(r => `[[${r}]]`).join('+')} = [[${outcome.result}]]`
     }
 
-    // log('testShield')
-    function testShield (character, who, outcome) {
-        return new Promise((resolve, reject) => {
-            if (character.items.indexOf('Enchanted Shield') > -1) {
-                const shield = randomInteger(6);
-                if (shield > 3) {
-                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} but your <em>Enchanted Shield</em> [[${shield}]] protected you!`)
-                    resolve()
-                } else {
-                    sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)} and your <em>Enchanted Shield</em> [[${shield}]] failed you! Taking 1 <em>Injury</em>.`)
-                    if (shield === 1) {
-                        outcome.b.push('enchanted-shield')
-                    }
-                    reject()
-                }
-            } else {
-                sendChat('QuestCrawl', `/w ${who} You rolled ${renderOutcome(outcome)}! Take 1 injury.`)
-                reject()
-            }
-        })
-    }
-
     // log('discardBrokenItems')
     function discardBrokenItems (character, who, outcome) {
         if (outcome.b.length > 0) {
@@ -2125,7 +2156,7 @@ on("ready", () => {
                 if (['enchanted-shield', 'magic-sword', 'holy-rod', 'elven-cloak', 'compass', 'survival-kit', 'mountaineering-gear'].indexOf(b) > -1) {
                     deleteRepeatingSectionRow(getItemRowId(character, items[b].name), character.id)
                     logEvent(character, `Threw away their broken ${items[b].name}.`);
-                    sendChat('QuestCrawl', `/w ${who} <h3>Your <em>${items[b].name}</em> has broken! It has been removed from your character sheet.</h3>`)
+                    sendChat('QuestCrawl', `${character.name}'s ${items[b].name} has broken! It has been removed from their inventory.`)
                 }
             })
         }
@@ -2136,30 +2167,30 @@ on("ready", () => {
         const outcome = parseOutcome(params)
         if (params.type !== 'faction') {
             if (outcome.result >= parseInt(params.challenge)) {
-                const treasureMessage = character.treasure === character.treasure_max ? 'You cannot carry anymore <em>Treasure</em>!' : 'You have collected 1 <em>Treasure</em>.'
-                sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and has  defeated the <em>Terrible Beastie</em>!`)
-                sendChat('QuestCrawl', `/w ${who} ${treasureMessage} [Roll to Loot](${rabbitsFoot(character, '!questcrawl --loot &#91;[1d6]&#93;)', 'loot')}`)
-                logEvent(character, `Defeated the Terrible Beastie ${renderOutcome(outcome)}`);
+                const treasureMessage = character.treasure === character.treasure_max ? 'They cannot carry anymore Treasure</em>!' : 'They have collected 1 <em>Treasure.'
+                sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and has  defeated the Terrible Beastie! ${treasureMessage}`)
+                sendChat('QuestCrawl', `/w ${who} [Roll to Loot](${rabbitsFoot(character, '!questcrawl --loot &#91;[1d6]&#93;)', 'loot')}`, null, {use3d: true})
+                logEvent(character, `Defeated the Terrible Beastie ${renderOutcome(outcome)}. ${treasureMessage}`);
                 setAttrs(character.id, {
                     treasure: Math.min(character.treasure_max, character.treasure + 1)
                 });    
             } else {
-                testShield(character, who, outcome).then(() => {
-                    logEvent(character, `Was defeated by the Terrible Beastie. The Enchanted Shield prevented 1 Injury. ${renderOutcome(outcome)}`);
-                    // shield defended
-                }, () => {
-                    logEvent(character, `Was defeated by the Terrible Beastie, taking 1 Injury. ${renderOutcome(outcome)}`);
-                    setAttrs(character.id, {
-                        injuries: character.injuries + 1
-                    });
-                    const commands = [];
-                    checkForHealingHerbs(character, commands)
-                    if (commands.length > 0) {
-                        sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
-                    }
-    
-                })
-            }
+                setAttrs(character.id, {
+                    injuries: character.injuries + 1
+                });
+                logEvent(character, `Was defeated by the Terrible Beastie. ${renderOutcome(outcome)}`);
+                sendChat('QuestCrawl', `${character.name} rolled ${renderOutcome(outcome)} and was defeated by the Terrible Beastie!`)
+                if (character.items.includes('Enchanted Shield')) {
+                    sendChat('QuestCrawl', `/w ${who} [Take the Damage](!questcrawl --em accepts defeat, keeping their Injury) [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`, null, {use3d: true})
+                    return
+                }
+                sendChat('QuestCrawl', `${character.name} took 1 Injury`)
+                const commands = [];
+                checkForHealingHerbs(character, commands)
+                if (commands.length > 0) {
+                    sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+                }
+        }
         } else {
             const card = getCurrentCard()
             factions.result[card.suit](character, who, card, params, outcome)
@@ -2215,7 +2246,7 @@ on("ready", () => {
         holyRodBonus(character, output)
         spellBonus(character, output)
         commands.push(`[${output.label} ${output.dice.length}d6]${getBeastieCommandArgs(character, params, output)}`)
-        sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+        sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`, null, {use3d: true})
     }
 
     // log('shop')
@@ -2355,7 +2386,7 @@ on("ready", () => {
                 }
                 setAttrs(characterid, attrs)
             })
-            sendChat('QuestCrawl', `${character.name} has paid to heal the party.`)
+            sendChat('QuestCrawl', `${character.name} has paid to heal the party of all Injuries.`)
             return;
         }
 
@@ -2363,7 +2394,7 @@ on("ready", () => {
             injuries: Math.max(0, character.injuries - params.heal),
             treasure: Math.max(0, character.treasure - params.cost)
         })
-        sendChat('QuestCrawl', `/w ${who} You have been healed of ${params.heal} injuries`)
+        sendChat('QuestCrawl', `${character.name} has been healed of ${params.heal} Injuries`)
     }
 
     const itemCommands = {
@@ -2432,7 +2463,7 @@ on("ready", () => {
                 treasure: Math.max(character.treasure - params.cost, 0)
             });
             logEvent(character, `Gained ${supplyAmount} supplies.`)
-            sendChat('QuestCrawl', `/w ${who} <h3>${supplyAmount} Supplies were added to your character!</h3>`)
+            sendChat('QuestCrawl', `${character.name} has purchased ${supplyAmount} Supplies, the supplies were added to their inventory!`)
             return
         }
         if (character.inventory + 1 > character.inventory_max) {
@@ -2454,11 +2485,11 @@ on("ready", () => {
             attrs[`${rowid}_name`] = items[key].name
             setAttrs(character.id, {
                 inventory: character.inventory + 1,
-                treasure: character.treasure - params.cost,
+                treasure: Math.max(character.treasure - params.cost, 0),
                 ...attrs
             });
             logEvent(character, `Acquired ${items[key].name}.`)
-            sendChat('QuestCrawl', `<h3>${character.name} added ${items[key].name} to their inventory!</h3>`)
+            sendChat('QuestCrawl', `${character.name} added ${items[key].name} to their inventory!`)
             if (itemCommands[key]) {
                 sendChat('QuestCrawl', `/w ${who} ${itemCommands[key](character, rowKey)}`)
             }
@@ -2490,7 +2521,7 @@ on("ready", () => {
             const y = card.y + (map[i].y || 0)
             grid.move(card, {x, y})
             return card
-        }).forEach(c => grid.put(c));
+        }).forEach(c => c.getCoordString && grid.put(c));
         state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
         sendChat('QuestCrawl', `${character.name} has activated the twisting pyramid. The landscape shifts around you, the evil has become less powerful [${12 - state.QuestCrawl.evil}]!`)
         setAttrs(character.id, {
@@ -2556,7 +2587,7 @@ on("ready", () => {
             i++;
         }
         grid.setup = false
-        state.QuestCrawl.grid = grid.toJSON().map(c => c.toJSON());
+        state.QuestCrawl.grid = grid.toJSON().map(c => c && c.toJSON());
     }
 
     // log('canBecomeChampion')
@@ -2618,12 +2649,19 @@ on("ready", () => {
             discardBrokenItems(character, who, outcome)
             logEvent(character, `Failed to lead the party out of a crisis. ${renderOutcome(outcome)}`)
             logPartyEvent('Became injured in a crisis.')
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Safety could not be found, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). Everyone takes 1 injury.</h2>`)
+            sendChat('QuestCrawl', `Safety could not be found, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). Everyone takes 1 injury.`)
+
+            const commands = [];
+            checkForHealingHerbs(character, commands)
+            if (commands.length > 0) {
+                sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`)
+            }
+
             return
         }
         discardBrokenItems(character, who, outcome)
         logEvent(character, `Successfully led the party out of a crisis. ${renderOutcome(outcome)}`)
-        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely through the crisis, rolling ${renderOutcome(outcome)}.</h2>`)
+        sendChat('QuestCrawl', `${character.name} leads everyone safely through the crisis, rolling ${renderOutcome(outcome)}.`)
     }
 
     // log('suitBonus')
@@ -2681,13 +2719,13 @@ on("ready", () => {
             source: ['hero'],
             label: 'Regular Attempt'
         }
-        const commands = [`<h2>Challenge ${params.challenge}</h2>`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
+        const commands = [`Challenge ${params.challenge}`, `[Step Down as Champion](!questcrawl --clearchampion ${character.id})`]
         suitBonus(character, params, output);
         itemBonus('survival-kit', character, output)
         holyRodBonus(character, output);
         spellBonus(character, output);
         commands.push(`[${output.label} ${output.dice.length}d6]${getChallengeCommandArgs(character, 'crisis', params, output)}`)
-        sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party to safety. ${commands.join(' ')}`)    
+        sendChat('QuestCrawl', `/w ${who} You have chosen to lead your party to safety. ${commands.join(' ')}`, null, {use3d: true})    
     }
 
     // log('climbResult')
@@ -2704,7 +2742,7 @@ on("ready", () => {
             getPartyToken().move(origin);
             history.push(origin)
             logEvent(character, 'Attempted to climb a mountain, but was turned away. Returning to the place they left.')
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party was unable to scale the reaches, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). You return to where you left from.</h2>`)
+            sendChat('QuestCrawl', `Your party was unable to scale the reaches, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). You return to where you left from.`)
             discardBrokenItems(character, who, outcome)
             return
         }
@@ -2719,7 +2757,7 @@ on("ready", () => {
                 }
             }
         })
-        sendChat('QuestCrawl', `<h2>${character.name} leads everyone up the mountain, rolling (${renderOutcome(outcome)}).</h2>`)
+        sendChat('QuestCrawl', `${character.name} leads everyone up the mountain, rolling (${renderOutcome(outcome)}).`)
         const name = card.name;
         if (params.climb === 'dwarves') {
             sendChat('QuestCrawl', `${dwarves()}`);
@@ -2789,12 +2827,12 @@ on("ready", () => {
         if (challenge > outcome.result) {
             logEvent(character, `Became lost in the hardlands ${renderOutcome(outcome)}`)
             state.QuestCrawl.preventMove = () => { sendChat('QuestCrawl', 'Your party is lost in the wilderness. [Resend Chat](!questcrawl --look)') }
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has become lost in the hard lands, despite ${character.name}'s effort (${renderOutcome(outcome)}). End the turn and try again tomorrow.</h2>`)
+            sendChat('QuestCrawl', `Your party has become lost in the hard lands, despite ${character.name}'s effort (${renderOutcome(outcome)}). End the turn and try again tomorrow.`)
             return
         }
         state.QuestCrawl.preventMove = false
         logEvent(character, `Found their way out of the hardlands ${renderOutcome(outcome)}`)
-        sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the hard lands (${renderOutcome(outcome)}). End the turn and move tomorrow.</h2>`)
+        sendChat('QuestCrawl', `${character.name} leads everyone safely out of the hard lands (${renderOutcome(outcome)}). End the turn and move tomorrow.`)
     }
 
     // log('hardlands')
@@ -2833,22 +2871,32 @@ on("ready", () => {
         state.QuestCrawl.currentChampion = null
         discardBrokenItems(character, who, outcome)
         if (challenge > outcome.result) {
-            sendChat('QuestCrawl', `<h2 style='color: red;'>Your party has been found by the Megabeast, despite ${character.name}'s effort (${renderOutcome(outcome)}). Everyone takes 2 injuries!</h2>`)
-            getParty().forEach(c => setAttrs(c.id, {injuries: Math.min(c.injuries + 2, c.injuries_max)}))
+            logEvent('Hunted down by the Megabeast, everyone took 2 Injuries.')
+            sendChat('QuestCrawl', `Your party has been found by the Megabeast, despite ${character.name}'s effort (${renderOutcome(outcome)}). Everyone takes 2 injuries!`)
+            getParty().forEach(c => {
+                setAttrs(c.id, {injuries: Math.min(c.injuries + 2, c.injuries_max)});
+                if (c.items.includes('Enchanted Shield')) {
+                    sendChat('QuestCrawl', `/w ${who} [Raise your Enchanted Shield]${rabbitsFoot(character,`(!questcrawl --enchantedshield &#91;[1d6]&#93;)`, 'enchantedshield')}`)
+                }
+            })
             return
         }
         const {history} = state.QuestCrawl
         const coord = getLastLogEntry()
         const rest = history.slice(0, history.indexOf(coord))
         const previouslyVisited = rest.find(({name}) => name === coord.name);
-        if (previouslyVisited) {
-            sendChat('QuestCrawl', `<h2>${character.name} successfully leads everyone on a heist to rob the Megabeast's lair (${renderOutcome(outcome)}). You escape with 2 Treasure, 1 Random Magic Item, and 1 Weapon of Legend.</h2>`)
+        if (previouslyVisited && !state.QuestCrawl.megabeasts[coord.name]) {
+            logEvent(`Successfully evaded the Megabeast while stealing the treasure from it lair.`)
+            sendChat('QuestCrawl', `${character.name} successfully leads everyone on a heist to rob the Megabeast's lair (${renderOutcome(outcome)}). You escape with 2 Treasure, 1 Random Magic Item, and 1 Weapon of Legend.`)
             sendChat('QuestCrawl', `/w ${who} [Collect Random Magic Item](!questcrawl --buy --item &#91;[1d6+7]&#93; --cost 0) [Collect Weapon of Legend](!questcrawl --buy --item 16 --cost 0)`)
             setAttrs(character.id, {
                 treasure: Math.min(character.treasure + 2, character.treasure_max)
             });
+            state.QuestCrawl.megabeasts[coord.name] = character
+        } else if (previouslyVisited && state.QuestCrawl.megabeasts[coord.name]) {
+            sendChat('QuestCrawl', `${character.name} leads everyone safely out of the Megabeast's lair (${renderOutcome(outcome)}). It's hoard has already been plundered by ${state.QuestCrawl.megabeasts[coord.name].name}.`)
         } else {
-            sendChat('QuestCrawl', `<h2>${character.name} leads everyone safely out of the Megabeast's lair (${renderOutcome(outcome)}). You have discovered it's hoard, next time you may steal from it.</h2>`)
+            sendChat('QuestCrawl', `${character.name} leads everyone safely out of the Megabeast's lair (${renderOutcome(outcome)}). You have discovered it's hoard, next time you may steal from it.`)
         }
     }
 
@@ -2888,6 +2936,7 @@ on("ready", () => {
     // log('tunnel')
     function tunnel (character, who, args) {
         const params = getParams(args, 2);
+        params.cost = parseInt(params.cost, 10)
         const {mountains, config} = state.QuestCrawl;
         const {mode} = config;
         if (params.destination) {
@@ -2900,7 +2949,7 @@ on("ready", () => {
             state.QuestCrawl.history.push(target)
             if (params.cost) {
                 setAttrs(character.id, {
-                    treasure: character.treasure - parseInt((params.cost || 0), 10)
+                    treasure: Math.max(character.treasure - params.cost, 0)
                 })    
             }
             logPartyEvent(`The Party traveled through the Dwarven Tunnels to ${params.destination}.`)
@@ -2934,7 +2983,7 @@ on("ready", () => {
         }
         sendChat('QuestCrawl', `${character.name} has activated a remote viewing power. Move the Eye token [${params.map}] time on connected unrevealed territories.`)
         setAttrs(character.id, {
-            treasure: character.treasure - params.cost
+            treasure: Math.max(character.treasure - params.cost, 0)
         });
         getPartyToken().hide()
         getFarseeingToken().show().set({
@@ -3177,11 +3226,20 @@ on("ready", () => {
             return orbOfChaos(character, who, args);
         }
 
+        if(args.find(n=>/^enchantedshield(\b|$)/i.test(n))){
+            return enchantedShieldResult(character, who, args);
+        }
+
+        if(args.find(n=>/^em(\b|$)/i.test(n))){
+            return sendChat(character.name, `/em ${msg.content.replace('!questcrawl --em ', '')}`)
+        }
+
         if(args.find(n=>/^mode(\b|$)/i.test(n))){
             const params = getParams(args, 1)
             log(`changing mode ${params.mode || 'original'}`)
             return changeMode(params.mode || 'original');
         }
+
 
         sendChat('QuestCrawl', `/w ${who} <div>Command ${msg.content} not recognized</div>[Help](!questcrawl --help)`)
     });
@@ -3200,7 +3258,7 @@ on("ready", () => {
         const character = new Character(attribute.get('characterid'))
         log(character)
         if (character.mode === 'graveyard') {
-            if (getEpitaph(character).length > 0) {
+            if ((getEpitaph(character) || []).length > 0) {
                 return;
             } else {
                 logEvent(character, 'Succumbed to their Injuries.')
