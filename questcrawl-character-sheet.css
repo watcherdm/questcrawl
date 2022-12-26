@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css?family=Alegreya:ital,wght@0,400;0,700;0,900;1,400&display=swap');
 .letterhead {
-    display:block;
-    max-width: 500px;
+    display:none;
+    max-width: 300px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -10,10 +10,14 @@ h1 {
     text-align: center;
 }
 
+.avatar-image img {
+    width: 25%;
+}
+
 .questcrawl {
     font-family: 'Alegreya', serif;
-    font-size: 2em;
-    min-width: 800px;
+    font-size: 1em;
+    min-width: 400px;
 }
 
 .questcrawl input, .questcrawl textarea, button {
@@ -24,11 +28,6 @@ h1 {
 .top {
     margin: 2em;
     display: flex;
-}
-
-.col {
-    height: 100%;
-    width: 100%;
 }
 
 .col + .col {
@@ -46,7 +45,7 @@ h1 {
 .slot {
     display: inline-block;
     flex: 1;
-    flex-direction: row;
+    flex-direction: column;
     margin: 1em;
     max-width: 300px;
     height: 130px;
@@ -128,7 +127,6 @@ body.sheet-darkmode .btn.btn-default {
 
 .slot div {
     margin-left: 60px;
-    font-size: 0.5em;
 }
 
 .slot div span {
@@ -136,7 +134,7 @@ body.sheet-darkmode .btn.btn-default {
 }
 
 .slot div .name {
-    font-size: 1.5em;
+    font-size: 1.2em;
 }
 
 .repcontainer {
@@ -146,8 +144,11 @@ body.sheet-darkmode .btn.btn-default {
 }
 
 .repitem {
-    width: 30%;
     margin-bottom: 2%;
+}
+
+.repcontainer[data-groupname="repeating_history"] .repitem {
+    width: 100%;
 }
 
 .show-heart, .show-diamond, .show-spade, .show-club {
