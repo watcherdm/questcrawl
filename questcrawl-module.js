@@ -2189,6 +2189,10 @@ on("ready", () => {
         }
     }
 
+    function getMagicItemNames() {
+        return Object.keys(items).slice(8, 13).map(key => items[key].name)
+    }
+
     // log('beastieResult')
     function beastieResult (character, who, params) {
         const outcome = parseOutcome(params)
@@ -2280,6 +2284,10 @@ on("ready", () => {
         sendChat('QuestCrawl', `/w ${who} ${commands.join(' ')}`, null, {use3d: true})
     }
 
+    function getHandoutByName(name) {
+        return findObjs({type: 'handout', name })[0];
+    }
+
     // log('shop')
     function shop (character, who, args) {
         let {currentMagicItem, currentMagicItemId} = state.QuestCrawl
@@ -2302,13 +2310,21 @@ on("ready", () => {
                 state.QuestCrawl.currentMagicItem = currentMagicItem;
                 state.QuestCrawl.currentMagicItemId = currentMagicItemId;
             }
-            const available = i.slice(1, 7).map((k, i) => {
+            const shopCommands = []
+            const available = i.slice(1, 7).forEach((k, i) => {
                 const name = items[k].name;
-                const handout = findObjs({ type: 'handout', name: name })[0]
-                return `[${name}](http://journal.roll20.net/handout/${handout.id}) [Buy for 1 Treasure](!questcrawl --buy --item ${i + 2} --cost 1)`
+                const handout = getHandoutByName(name);
+                shopCommands.push(`<img src="${getThumb(handout.get('avatar'))}" style="width: 40px; height: 40px; margin-right: 1em; float: left;"/>[${name}](http://journal.roll20.net/handout/${handout.id})<br/> [Buy for 1 Treasure](!questcrawl --buy --item ${i + 2} --cost 1)<span style="clear: left;"></span>`)
             })
-            const currentMagicItemHandout = findObjs({ type: 'handout', name: currentMagicItem.name })[0]
-            sendChat('Shop Keep', `/w ${who} [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1 --cost 1)<br/> ${available.join('<br/>')} [${currentMagicItem.name}](http://journal.roll20.net/handout/${currentMagicItemHandout.id}) [Buy 1 for 3 Treasure](!questcrawl --buy --item ${currentMagicItemId + 8} --cost 3)`);
+            const currentMagicItemHandout = getHandoutByName(currentMagicItem.name);
+            const randomMagicItem = `<img src="${getThumb(currentMagicItemHandout.get('avatar'))}" style="width: 40px; height: 40px; margin-right: 1em; float: left;"/>[${currentMagicItem.name}](http://journal.roll20.net/handout/${currentMagicItemHandout.id})<br/> [Buy for 3 Treasure](!questcrawl --buy --item ${currentMagicItemId + 8} --cost 3)<span style="clear: left;"></span>`
+            shopCommands.push(randomMagicItem)
+            const toSell = character.items.filter(item => getMagicItemNames().includes(item)).forEach(itemName => {
+                const {id} = character.getItemByName(itemName)
+                const handout = getHandoutByName(itemName)
+                shopCommands.push(`<img src="${getThumb(handout.get('avatar'))}" style="width: 40px; height: 40px; margin-right: 1em; float: left;"/>[${itemName}](http://journal.roll20.net/handout/${handout.id})<br/> [Sell  for 1 Treasure](!questcrawl --sell --item ${id} --cost 1)<span style="clear: left;"></span>`);
+            })
+            sendChat('Shop Keep', `/w ${who} [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1 --cost 1)<br/> ${shopCommands.join('<br/>')}`);
         }
 
     }
@@ -3041,6 +3057,24 @@ on("ready", () => {
 
     }
 
+    function getPartyHistory() {
+        return state.QuestCrawl.history.filter(l => l.day != null).reduce((m, logEntry) => {
+            const theDay = (logEntry.events || []).map((e) => {
+                if (e.character) {
+                    if (e.said) {
+                        return `${e.character}: "${e.said}"`;
+                    } else if (e.event) {
+                        return `${e.character}: ${e.event}`;
+                    }    
+                } else {
+                    return e.event;
+                }
+            }).join('\n')
+            m.push({day: `Day ${logEntry.day} : ${logEntry.asName || logEntry.name}`, events: `${theDay}`});
+            return m;
+        }, [])
+    }
+
     // log('getCharacterHistory')
     function getCharacterHistory (character) {
         return state.QuestCrawl.history.filter(l => l.day != null).reduce((m, logEntry) => {
@@ -3061,7 +3095,7 @@ on("ready", () => {
     // log('characterlog')
     function characterlog (character, who, args) {
         
-        const logs = getCharacterHistory(character);
+        const logs = getPartyHistory();
 
         sendChat('QuestCrawl', `/w ${who} <ul><li>${logs.map(l => `${l.day}${l.events}`).join('</li><li>')}</li></ol>`)
     }
@@ -3085,6 +3119,21 @@ on("ready", () => {
         otherDeck.set({
             shown: false
         })
+    }
+
+    function sell(character, who, args) {
+        const params = getParams(args, 2);
+        const item = character.getItemById(params.item);
+        if (!item) {
+            return sendChat('QuestCrawl', `/w ${who} There is no such item in your inventory.`);
+        }
+        const cost = parseInt(params.cost, 10);
+        removeItem(item.name, character)
+        setAttrs(character.id, {
+            treasure: Math.min(character.treasure + cost, character.treasure_max)
+        });
+        logEvent(character, `Sold ${item.name} at shop for ${cost} Treasure.`)
+        sendChat('QuestCrawl', `${character.name} sold ${item.name} for ${cost} Treasure.`)
     }
 
     on("chat:message", (msg) => {
@@ -3296,6 +3345,10 @@ on("ready", () => {
             const params = getParams(args, 1)
             log(`changing mode ${params.mode || 'original'}`)
             return changeMode(params.mode || 'original');
+        }
+
+        if(args.find(n=>/^sell(\b|$)/i.test(n))){
+            return sell(character, who, args);
         }
 
         if(args.find(n=>/^test(\b|$)/i.test(n))){
