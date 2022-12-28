@@ -994,9 +994,7 @@ on("ready", () => {
             }
         },
         put: function(card) {
-            log(`putting ${card.toString()}`)
             this.internal[card.getCoordString()] = card;
-            log(`successfully put ${card.toString()}`)
         },
         remove: function(card) {
             const coordString = card.getCoordString()
@@ -1076,7 +1074,6 @@ on("ready", () => {
             layer: 'objects',
             controlledby: 'all'
         })
-        log(result)
         return new PartyToken(result)
     }
 
@@ -2587,7 +2584,6 @@ on("ready", () => {
         const pyramid = getCurrentCard()
         const map = twist === 'cc' ? ccPropMap : cPropMap;
         pyramid.getAllNeighbors().map((card, i) => {
-            log(card.toString())
             const x = card.x + (map[i].x || 0);
             const y = card.y + (map[i].y || 0)
             grid.move(card, {x, y})
