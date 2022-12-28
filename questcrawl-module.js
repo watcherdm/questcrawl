@@ -2303,7 +2303,7 @@ on("ready", () => {
                 ${i.slice(7, 13).map((k,i) => {
                     const name = items[k].name;
                     const handout = findObjs({ type: 'handout', name: name })[0]
-                    return `[${name}](http://journal.roll20.net/handout/${handout.id}) [Buy 1 for 4 Treasure](!questcrawl --buy --item ${i + 2} --cost 4)`;
+                    return `[${name}](http://journal.roll20.net/handout/${handout.id}) [Buy 1 for 4 Treasure](!questcrawl --buy --item ${i + 8} --cost 4)`;
                 }).join('\n')}
             `);
             
@@ -3143,7 +3143,7 @@ on("ready", () => {
 
     on("chat:message", (msg) => {
         // log('chat message received')
-        const logEntry = getLastLogEntry();
+        const logEntry = (getLastLogEntry() || {});
         logEntry.events = logEntry.events || []
         if ( msg.type === 'general' && msg.playerid !== 'API') {
             const player = getObj('player', msg.playerid)
