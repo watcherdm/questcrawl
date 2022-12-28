@@ -404,8 +404,8 @@ on("ready", () => {
         },
         'Jack of Spades': (card) => {
             return `
-                [Activate Counter-Clockwise](!questcrawl --twist cc --x ${card.x} --y ${card.y}) 
-                [Activate Clockwise](!questcrawl --twist c --x ${card.x} --y ${card.y})`
+                [Activate Counter-Clockwise](!questcrawl --twist cc --cost 1) 
+                [Activate Clockwise](!questcrawl --twist c --cost 1)`
         },
         'Red Joker': (card) => {
             if (checkEndGame()) {
@@ -848,7 +848,7 @@ on("ready", () => {
             }
         },
         toString: function () {
-            return `${this.x}:${this.y}:${this.cardid}:${this.id}`
+            return `${this.name}:${this.x}:${this.y}`
         },
         toJSON: function() {
             return {
@@ -961,16 +961,19 @@ on("ready", () => {
         },
         place: function(){
         },
+        toString: function() {
+            return `${this.id}:${this.x}|${this.y}`
+        },
         getAllNeighbors: function() {
             let {x, y} = this;
             return this.neighbors.map((n) => {
                 return grid.get({x: x + n.x, y: y + n.y})
             });
         },
-        flip: () => {},
-        move: (coords) => {
-            this.x = coords.x
-            this.y = coords.y
+        flip: function () {},
+        move: function ({x, y}) {
+            this.x = x
+            this.y = y
         }
     }
 
@@ -981,28 +984,32 @@ on("ready", () => {
     }
     
     Grid.prototype = {
-        get: function({x, y}) {
-            const card = this.internal[`${x.toFixed(1)},${y.toFixed(1)}`]
+        get: function(coord) {
+            const {getCoordString} = QuestCrawlCard.prototype
+            const card = this.internal[`${getCoordString.call(coord)}`]
             if (card) {
                 return card
             } else {
-                return (this.setup) ? {x, y} : new GapCard({x,y});
+                return (this.setup) ? coord : new GapCard(coord);
             }
         },
         put: function(card) {
+            log(`putting ${card.toString()}`)
             this.internal[card.getCoordString()] = card;
+            log(`successfully put ${card.toString()}`)
         },
         remove: function(card) {
-            this.internal[card.getCoordString()] = null;
+            const coordString = card.getCoordString()
+            if (this.internal[coordString] === card || card.id === 'Gap') {
+                delete this.internal[coordString];
+            }
         },
         toJSON: function() {
             return Object.values(this.internal)
         },
         move: function(card, coords) {
-            if (card.getCoordString) {
-                this.remove(card)
-                card.move(coords)    
-            }
+            this.remove(card)
+            card.move(coords)    
         }
     }
 
@@ -2563,12 +2570,13 @@ on("ready", () => {
     // log('twist')
     function twist (character, args) {
         const {mode} = state.QuestCrawl.config;
-        if (character.treasure < 1) {
+        const params = getParams(args, 1)
+        const {twist, cost} = params
+        const _cost = parseInt(cost, 10);
+        if (character.treasure < cost) {
             sendChat('QuestCrawl', `The Pyramid requires treasure to function.`)
             return;
         }
-        const params = getParams(args, 1)
-        const {twist, x, y} = params
 
         let ccPropMap = [{y: 1},{x: -1},{x: -1},{y: 1},{y: -1},{x: 1},{x: 1},{y: -1}]
         let cPropMap = [{x: 1},{x: 1},{y: 1},{y: -1},{y: 1},{y: -1},{x: -1},{x: -1}]
@@ -2576,9 +2584,10 @@ on("ready", () => {
             ccPropMap = [{x: -0.5, y: 1},{x: -1},{x: 0.5, y: 1},{x: -0.5, y: -1},{x: 1},{x: 0.5, y: -1}]
             cPropMap = [{x: 1},{x: 0.5, y: 1},{x: 0.5, y: -1},{x: -0.5, y: 1},{x: -0.5, y: -1},{x: -1}]
         }
-        const pyramid = grid.get({x: parseFloat(x, 10), y: parseFloat(y, 10)})
+        const pyramid = getCurrentCard()
         const map = twist === 'cc' ? ccPropMap : cPropMap;
         pyramid.getAllNeighbors().map((card, i) => {
+            log(card.toString())
             const x = card.x + (map[i].x || 0);
             const y = card.y + (map[i].y || 0)
             grid.move(card, {x, y})
@@ -2587,7 +2596,7 @@ on("ready", () => {
         state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
         sendChat('QuestCrawl', `${character.name} has activated the twisting pyramid. The landscape shifts around you, the evil has become less powerful [${12 - state.QuestCrawl.evil}]!`)
         setAttrs(character.id, {
-            treasure: Math.max(character.treasure - 1, 0)
+            treasure: Math.max(character.treasure - cost, 0)
         });    
     }
 
