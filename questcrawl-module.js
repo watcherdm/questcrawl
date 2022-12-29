@@ -571,6 +571,7 @@ on("ready", () => {
                 currentState: 0,
                 currentChampion: null,
                 grid: [],
+                gaps: 0,
                 day: 0,
                 players: {},
                 characters: [],
@@ -599,10 +600,6 @@ on("ready", () => {
         }
         if (!state.QuestCrawl.megabeasts) {
             state.QuestCrawl.megabeasts = {};
-        }
-
-        if (!state.QuestCrawl.quests) {
-            state.QuestCrawl.quests = {};
         }
         state.QuestCrawl.currentChampion = null;
         detectPageGrid()
@@ -745,7 +742,8 @@ on("ready", () => {
     
     // log('checkEndGame')
     function checkEndGame () {
-        return ['hearts', 'diamonds', 'clubs', 'spades'].every(k => (state.QuestCrawl.quests || {})[k])
+        const suits = getMoveHistory().filter(card => card.name.indexOf('Queen') === 0).map(c => c.name.split(' ').pop())
+        return ['Hearts', 'Diamonds', 'Clubs', 'Spades'].every(suit => suits.includes(suit))
     }
 
     // log('getThumb')
@@ -888,9 +886,6 @@ on("ready", () => {
                 state.QuestCrawl.mountains = state.QuestCrawl.mountains || {};
                 state.QuestCrawl.mountains[name] = this;
             }
-            if (name.indexOf('Queen') === 0 && !remote) {
-                state.QuestCrawl.quests[this.suit] = true
-            }
         },
         makeBlank: function() {
             this.blank = true;
@@ -997,9 +992,11 @@ on("ready", () => {
             this.internal[card.getCoordString()] = card;
         },
         remove: function(card) {
-            const coordString = card.getCoordString()
-            if (this.internal[coordString] === card || card.id === 'Gap') {
-                delete this.internal[coordString];
+            if (card.getCoordString) {
+                const coordString = card.getCoordString()
+                if (this.internal[coordString] === card || card.id === 'Gap') {
+                    delete this.internal[coordString];
+                }
             }
         },
         toJSON: function() {
@@ -1015,7 +1012,7 @@ on("ready", () => {
         if (!Array.isArray(data)) {
             return new Grid();
         }
-        return data.reduce((g, card) => {
+        const grid = data.reduce((g, card) => {
             if (card.cardid === "Lake") {
                 g.put(new GapCard(card))
             } else {
@@ -1023,6 +1020,8 @@ on("ready", () => {
             }
             return g
         }, (new Grid()));
+        grid.setup = false;
+        return grid;
     }
 
     // log('toScreenGrid')
@@ -2085,7 +2084,6 @@ on("ready", () => {
                             state.QuestCrawl.evil = 0;
                             state.QuestCrawl.preventMove = false;
                             state.QuestCrawl.mapHistory = [];
-                            state.QuestCrawl.quests = {};
                             state.QuestCrawl.mountains = {};
                             state.QuestCrawl.spells = {};
                             state.QuestCrawl.megabeasts = {};
@@ -2323,10 +2321,9 @@ on("ready", () => {
             const currentMagicItemHandout = getHandoutByName(currentMagicItem.name);
             const randomMagicItem = `<img src="${getThumb(currentMagicItemHandout.get('avatar'))}" style="width: 40px; height: 40px; margin-right: 1em; float: left;"/>[${currentMagicItem.name}](http://journal.roll20.net/handout/${currentMagicItemHandout.id})<br/> [Buy for 3 Treasure](!questcrawl --buy --item ${currentMagicItemId + 8} --cost 3)<span style="clear: left;"></span>`
             shopCommands.push(randomMagicItem)
-            const toSell = character.items.filter(item => getMagicItemNames().includes(item)).forEach(itemName => {
-                const {id} = character.getItemByName(itemName)
-                const handout = getHandoutByName(itemName)
-                shopCommands.push(`<img src="${getThumb(handout.get('avatar'))}" style="width: 40px; height: 40px; margin-right: 1em; float: left;"/>[${itemName}](http://journal.roll20.net/handout/${handout.id})<br/> [Sell  for 1 Treasure](!questcrawl --sell --item ${id} --cost 1)<span style="clear: left;"></span>`);
+            const toSell = character.itemIds.filter(({name}) => getMagicItemNames().includes(name)).forEach(({name, id}) => {
+                const handout = getHandoutByName(name)
+                shopCommands.push(`<img src="${getThumb(handout.get('avatar'))}" style="width: 40px; height: 40px; margin-right: 1em; float: left;"/>[${name}](http://journal.roll20.net/handout/${handout.id})<br/> [Sell  for 1 Treasure](!questcrawl --sell --item ${id} --cost 1)<span style="clear: left;"></span>`);
             })
             sendChat('Shop Keep', `/w ${who} [Buy 10 Supplies: 1 Treasure](!questcrawl --buy --item 1 --cost 1)<br/> ${shopCommands.join('<br/>')}`);
         }
@@ -2469,7 +2466,7 @@ on("ready", () => {
         'map': (c, key) => `[Use Map](!questcrawl --map &#91;[1d6]&#93; --cost 0 --removeitem ${key})`,
         'orb-of-chaos': (c, key) => `[Activate the Orb of Chaos](!questcrawl --orbofchaos --removeitem ${key})`,
         'dwarven-tunnel-passport': (c, key) => {
-            `[Use the Dwarven Tunnels](!questcrawl --tunnel --origin ${getCurrentCard().name.split(' ').join('-')} --cost 0)`
+            return `[Use the Dwarven Tunnels](!questcrawl --tunnel --origin ${getCurrentCard().name.split(' ').join('-')} --cost 0)`
         }
     }
 
@@ -2589,6 +2586,7 @@ on("ready", () => {
             grid.move(card, {x, y})
             return card
         }).forEach(c => c.getCoordString && grid.put(c));
+        logEvent(character, `Used 1 Treasure to activate the Twisting Pyramid ${twist === 'cc' ? 'Counter Clockwise' : 'Clockwise'}.`)
         state.QuestCrawl.evil = Math.min(state.QuestCrawl.evil + 1, 3)
         sendChat('QuestCrawl', `${character.name} has activated the twisting pyramid. The landscape shifts around you, the evil has become less powerful [${12 - state.QuestCrawl.evil}]!`)
         setAttrs(character.id, {
@@ -2603,6 +2601,7 @@ on("ready", () => {
         }
 
         const params = getParams(args, 2)
+        let {gaps} = state.QuestCrawl.config
 
         if (params.static) {
             shuffleDeck(deckid, true, getCardsFromDeck(deckid))
@@ -2616,7 +2615,12 @@ on("ready", () => {
         const l = findObjs({type: 'graphic', cardid: startingTown.id})[0]
         toFront(l)
         scard.id = l.id
-        const gaps = parseInt(params.gaps, 10) || Math.floor((rng() * 18) + 10)
+        if (params.gaps) {
+            gaps = parseInt(params.gaps, 10)
+        }
+        if (isNaN(gaps)) {
+            gaps = Math.floor((rng() * 18) + 10)
+        }        
         const show = (parseInt(params.show, 10) === 1)
         if (gaps > 27) {
             sendError(who, 'Invalid Parameter --gaps must be less than 27')
@@ -2678,6 +2682,8 @@ on("ready", () => {
     function orbOfChaos (character, who, args) {
         if (character.items.includes('Orb of Chaos')) {
             removeItem('Orb of Chaos', character);
+            logEvent(character, 'Unable to resist, speaks the word of power into the Orb of Chaos')
+            logPartyEvent('Thrown to the winds of Chaos, all goes dark, and then awake on the edge of a new land.')
             sendChat('QuestCrawl', `/w ${who} Foolish mortal! You have meddled with dark forces, and now you must suffer!`)
             sendChat('QuestCrawl', 'A shattering sound echoes throughout the cosmos.')
             const page = getObj('page', Campaign().get('playerpageid'))
@@ -2686,6 +2692,7 @@ on("ready", () => {
             resetBoard(state.QuestCrawl.config.deckid, false).then(({config}) => {
                 generateIsland(config.deckid, args)
                 page.set({dynamic_lighting_enabled: false})
+                getPartyToken().move({x: 0, y: 0})
             });
         }
     }
@@ -2720,6 +2727,14 @@ on("ready", () => {
             discardBrokenItems(character, who, outcome)
             logEvent(character, `Failed to lead the party out of a crisis. ${renderOutcome(outcome)}`)
             logPartyEvent('Became injured in a crisis.')
+            getParty().forEach((character) => {
+                const commands = []
+                checkForHealingHerbs(character, commands)
+                checkForHolyRod(character, commands)
+                if (commands.length > 0) {
+                    sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
+                }
+            })
             sendChat('QuestCrawl', `Safety could not be found, despite ${character.name}'s effort, rolling (${renderOutcome(outcome)}). Everyone takes 1 injury.`)
             return
         }
@@ -3071,11 +3086,12 @@ on("ready", () => {
                     } else if (e.event) {
                         return `${e.character}: ${e.event}`;
                     }    
-                } else {
-                    return e.event;
+                } else if (e.event) {
+                    return `${e.event}`
                 }
-            }).join('\n')
-            m.push({day: `Day ${logEntry.day} : ${logEntry.asName || logEntry.name}`, events: `${theDay}`});
+            }).map(c => c.replace(/\[\[(\d+)\]\]/ig, '<span class="inlinerollresult>$1</span>"')).filter(x => x).join('</li><li>')
+            const name = logEntry.asName ? `${logEntry.name} as ${logEntry.asName}` : logEntry.name
+            m.push({day: `Day ${logEntry.day} : ${name}`, events: `<ul><li>${theDay}</li></ul>`});
             return m;
         }, [])
     }
@@ -3097,12 +3113,25 @@ on("ready", () => {
         }, [])
     }
 
+    function getLogHandout() {
+        let handout = findObjs('handout', {name: 'Adventure Journal'})[0];
+        if (!handout) {
+            handout = createObj('handout', {
+                name: 'Adventure Journal',
+                inplayerjournals: 'all'
+            })
+        }
+        return handout
+    }
+
     // log('characterlog')
     function characterlog (character, who, args) {
         
         const logs = getPartyHistory();
 
-        sendChat('QuestCrawl', `/w ${who} <ul><li>${logs.map(l => `${l.day}${l.events}`).join('</li><li>')}</li></ol>`)
+        const handout = getLogHandout()
+        handout.set('notes', `<ul><li>${logs.map(l => `${l.day}${l.events}`).join('</li><li>')}</li></ol>`)
+        sendChat('QuestCrawl', `[Adventure Journal](http://journal.roll20.net/handout/${handout.id})`)
     }
 
     // log('changeMode')
@@ -3173,7 +3202,7 @@ on("ready", () => {
         log(playerid)
         let who = (player || {get:()=>'API'}).get('_displayname');
 
-        logEntry.events.push({player, who, args})
+        // logEntry.events.push({player, who, args})
 
         if(args.find(n=>/^detect(\b|$)/i.test(n))) {
             detectGameState()
