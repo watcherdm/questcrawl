@@ -1,0 +1,32 @@
+{
+  "name": "questcrawl-roll20",
+  "version": "1.0.0",
+  "description": "api module, character sheet for roll20.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint *.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/watcherdm/questcrawl.git"
+  },
+  "keywords": [
+    "roll20",
+    "questcrawl",
+    "watcherdm"
+  ],
+  "author": "Gabriel Hernandez <gabriel@watcherdm.com>",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/watcherdm/questcrawl/issues"
+  },
+  "homepage": "https://github.com/watcherdm/questcrawl#readme",
+  "devDependencies": {
+    "eslint": "^8.31.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-n": "^15.6.0",
+    "eslint-plugin-promise": "^6.1.1"
+  }
+}
