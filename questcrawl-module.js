@@ -1315,6 +1315,23 @@ on('ready', () => {
       sendChat('QuestCrawl', `${this.name} has died.`)
       logEvent(this, 'Succumbed to their Injuries.')
       getCharacterHistory(this).forEach((l) => addEpitaphDay(this, l))
+    },
+    getToken: function () {
+      let token = findObjs({ type: 'graphic', represents: this.id })[0]
+      if (!token) {
+        token = createObj('graphic', {
+          pageid: Campaign().get('playerpageid'),
+          top: 0,
+          left: 0,
+          represents: this.id,
+          layer: 'objects',
+          height: 70,
+          width: 70,
+          imgsrc: this.thumb || 'https://s3.amazonaws.com/files.d20.io/images/320602368/vZ9dXfIl0BUzNoXX9tI-ag/thumb.png?1672442009',
+          controllerby: this.player.id
+        })
+      }
+      return token
     }
   }
 
@@ -2172,7 +2189,7 @@ on('ready', () => {
     if (Object.keys(params).length === 0) {
       const co = { ...state.QuestCrawl }
       delete co.grid
-      sendChat('QuestCrawl', `/w ${who} ${JSON.stringify(co, null, 2)}`)
+      log(JSON.stringify(co, null, 2))
       return
     }
     if (params.reset) {
@@ -2474,7 +2491,9 @@ on('ready', () => {
     const lastEntry = getMoveHistory().slice(-1)[0]
     getPartyToken().move(lastEntry)
     look()
-    players.forEach(selectCharacter)
+    setTimeout(() => {
+      players.forEach(selectCharacter)
+    }, 1000)
   }
 
   // log('PartyToken')
@@ -2740,9 +2759,6 @@ on('ready', () => {
         }
         target = grid.get(getRandomOpenCard().getRandomNeighborCoords())
       }
-      log(gaps)
-      log(i % gapSplit)
-      log(open.length)
       if ((gaps !== 0) && (i % gapSplit === 0) && open.length >= 1) {
         log(`Placing gap card at ${target}`)
         const gap = new GapCard({ x: target.x, y: target.y })
@@ -3269,6 +3285,28 @@ on('ready', () => {
     sendChat('QuestCrawl', `${character.name} sold ${item.name} for ${cost} Treasure.`)
   }
 
+  function getTurnOrder () {
+    Campaign().set('initiativepageid', Campaign().get('playerpageid'))
+    Campaign().set('turnorder', '')
+    getParty().forEach((character) => {
+      sendChat('QuestCrawl', `/w ${character.who} [Roll for Initiative](!questcrawl --turnorder &#91;[1d6]&#93;)`)
+    })
+  }
+
+  function turnOrder (character, args) {
+    const params = getNumericParams(args, 1)
+    let turnorder = []
+    if (Campaign().get('turnorder') !== '') {
+      turnorder = JSON.parse(Campaign().get('turnorder'))
+    }
+    const token = character.getToken()
+    log(token)
+    turnorder.push({ id: token.get('_id'), pr: params.turnorder, custom: '', _pageid: token.get('pageid') })
+    turnorder.sort((a, b) => a.pr - b.pr)
+    log(turnorder)
+    Campaign().set('turnorder', JSON.stringify(turnorder))
+  }
+
   on('chat:message', (msg) => {
     // log('chat message received')
     const logEntry = (getLastLogEntry() || {})
@@ -3308,6 +3346,11 @@ on('ready', () => {
       return
     }
 
+    if (args.find(n => /^getturnorder(\b|$)/i.test(n))) {
+      getTurnOrder()
+      return
+    }
+
     if (args.find(n => /^endturn(\b|$)/i.test(n))) {
       endTurn()
       return
@@ -3326,10 +3369,7 @@ on('ready', () => {
     }
 
     if (!state.QuestCrawl.config.deck) {
-      sendError(who, `
-                You must set a deck for questcrawl before using this mod
-                !questcrawl --config --deck <Name of Deck>
-            `)
+      sendError(who, 'You must set a deck for questcrawl before using this mod !questcrawl --config --deck <Name of Deck>')
       return
     }
 
@@ -3381,6 +3421,10 @@ on('ready', () => {
     const params = getParams(args, 0)
     if (params.removeitem && character.itemIds.find(i => i.id === params.removeitem)) {
       removeItem(character.getItemById(params.removeitem).name, character)
+    }
+
+    if (args.find(n => /^turnorder(\b|$)/i.test(n))) {
+      return turnOrder(character, args)
     }
 
     if (args.find(n => /^rabbitsfoot(\b|$)/i.test(n))) {
