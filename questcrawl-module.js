@@ -21,24 +21,20 @@ on('ready', () => {
     eight: 8
   }
 
-  // log('logPartyEvent')
   function logPartyEvent (event) {
     (getLastLogEntry().events || []).push({ character: null, event })
   }
 
-  // log('logEvent')
   function logEvent (character, event) {
     (getLastLogEntry().events || []).push({ character, event })
   }
 
-  // log('checkForMaps')
   function checkForMaps (character, commands) {
     if (character.items.includes('Map')) {
       commands.push(`[Use Map](!questcrawl --map &#91;[1d6]&#93; --cost 0 --removeitem ${character.getItemByName('Map').id})`)
     }
   }
 
-  // log('checkForBookofSpells')
   function checkForBookofSpells (character, commands) {
     if (character.items.includes('Book of Spells')) {
       getLiveParty().forEach(ally => {
@@ -48,7 +44,6 @@ on('ready', () => {
     }
   }
 
-  // log('bookofspells')
   function bookofspells (character, who, args) {
     const params = getParams(args, 1)
     const target = getLiveParty().find(c => c.id === params.bookofspells)
@@ -116,7 +111,6 @@ on('ready', () => {
     }
   })()
 
-  // log('bandits')
   function bandits (character, who, args) {
     const params = getParams(args, 1)
     const outcome = parseOutcome(params, who)
@@ -132,7 +126,6 @@ on('ready', () => {
     }
   }
 
-  // log('checkForOrbOfChaos')
   function checkForOrbOfChaos (character, commands) {
     if (character.items.includes('Orb of Chaos')) {
       const command = itemCommands['orb-of-chaos'](character, character.getItemByName('Orb of Chaos').id)
@@ -141,14 +134,12 @@ on('ready', () => {
     }
   }
 
-  // log('checkForHealingHerbs')
   function checkForHealingHerbs (character, commands) {
     if (character.items.includes('Healing Herbs') && character.injuries > 0) {
       commands.push(`[Heal an Injury with Herbs](!questcrawl --heal 1 --cost 0 --removeitem ${character.getItemByName('Healing Herbs').id})`)
     }
   }
 
-  // log('holyrod')
   function holyrod (character, who, args) {
     const params = getParams(args, 1)
     const injuries = parseInt(getAttrByName(params.holyrod, 'injuries'), 10)
@@ -164,7 +155,6 @@ on('ready', () => {
     })
   }
 
-  // log('checkForHolyRod')
   function checkForHolyRod (c, commands) {
     if (c.items.indexOf('Holy Rod') !== -1) {
       getLiveParty().forEach(x => {
@@ -176,7 +166,6 @@ on('ready', () => {
     }
   }
 
-  // log('checkForBandits')
   function checkForBandits (c, commands) {
     const card = getCurrentCard()
     const cityOfThieves = card.getAllNeighbors().find((c) => {
@@ -198,7 +187,6 @@ on('ready', () => {
     }
   }
 
-  // log('checkForEvil')
   function checkForEvil (card) {
     const unearthedEvil = card.getAllNeighbors().find((c) => {
       return c.name === 'King of Spades' && c.faceup
@@ -603,6 +591,10 @@ on('ready', () => {
       setAttrs(character.id, {
         max_injuries: 6
       })
+      const injuries = findObjs({ type: 'attribute', characterid: character.id, name: 'injuries' })[0]
+      injuries.set({
+        max: 6
+      })
     }
   }
 
@@ -691,8 +683,80 @@ on('ready', () => {
     })
   }
 
+  function TurnOrder (json = []) {
+    this.internal = json
+  }
+
+  TurnOrder.prototype = {
+    setTokenControl: function () {
+      getPartyToken().set({
+        controlledby: this.internal[0].playerid
+      })
+    },
+    print: function () {
+      sendChat('QuestCrawl', `Turn Order:<br/> ${this.getCharacters().map(({ initiative, name }, i) => `${i + 1}: ${name} [[${initiative}]]`).join('<br/>')}`)
+    },
+    nextTurn: function () {
+      if (getParty().every(character => character.isDead())) {
+        sendChat('QuestCrawl', 'Party is Dead. GAME OVER!')
+        return false
+      }
+      this.internal.push(this.internal.shift())
+      const next = this.internal[0]
+      const player = getObj('player', next.playerid)
+      if (getCharacterJSON(player).isDead()) {
+        this.nextTurn()
+      } else {
+        this.setTokenControl()
+      }
+    },
+    getCharacters: function () {
+      return this.internal.map(({ playerid, result }) => Object.assign({ initiative: result }, getCharacterJSON(getObj('player', playerid))))
+    },
+    getCurrentCharacter: function () {
+      const player = getObj('player', this.internal[0].playerid)
+      return getCharacterJSON(player)
+    },
+    toJSON: function () {
+      return this.internal
+    },
+    has: function (character) {
+      return this.internal.find((turn) => turn.playerid === character.player.id)
+    },
+    add: function (character, result) {
+      this.internal.push({ playerid: character.player.id, result })
+      this.reset()
+    },
+    reset: function () {
+      this.internal.sort((a, b) => b.result - a.result)
+    },
+    getTies: function () {
+      this.internal.reduce((m, { result }) => {
+        m[result] = m[result] || 0
+        m[result]++
+        return m
+      }, {})
+    },
+    hasTies: function () {
+      return Object.values(this.getTies()).some(count => count > 1)
+    },
+    removeTies: function () {
+      const resultsToRemove = Object.entries(this.getTies()).filter(([result, count]) => count > 1).map(([result, count]) => result)
+      const removedRolls = this.internal.filter(({ result }) => resultsToRemove.includes(result))
+      removedRolls.forEach((toRemove) => {
+        const { playerid, result } = toRemove
+        const character = getCharacterJSON(getObj('player', playerid))
+        sendChat('QuestCrawl', `/w ${character.who} You rolled a tie [[${result}]]. [Reroll Initiative]((!questcrawl --turnorder &#91;[1d6]&#93;))`)
+        delete this.internal[this.internal.indexOf(toRemove)]
+      })
+    }
+  }
   // log('endTurn')
-  function endTurn () {
+  function endTurn (character) {
+    if (turnorder.getCurrentCharacter().id !== character.id) {
+      sendChat('QuestCrawl', `/w ${character.who} It isn't currently your turn. Only ${turnorder.getCurrentCharacter().name} may end the turn.`)
+      return
+    }
     state.QuestCrawl.day++
     getLastLogEntry().day = state.QuestCrawl.day
     state.QuestCrawl.grid = grid.toJSON().map(c => c && c.toJSON())
@@ -730,9 +794,15 @@ on('ready', () => {
       commands.length > 0 && sendChat('QuestCrawl', `/w ${character.who} ${commands.join(' ')}`)
       setAttrs(character.id, output)
     })
-    getParty().forEach(character => !character.isDead() && character.shouldDie() && character.die())
-    sendChat('QuestCrawl', `Day ${state.QuestCrawl.day} is over.`)
+    const deadCharacters = getParty().map(character => !character.isDead() && character.shouldDie() && character.die() && character.id).filter(x => x)
+    if (deadCharacters.length === getParty().length) {
+      sendChat('QuestCrawl', '<h1>The Party has died, GAME OVER!</h1>')
+      return
+    }
     updateTracker()
+    turnorder.nextTurn()
+    state.QuestCrawl.turnorder = turnorder.toJSON()
+    sendChat('QuestCrawl', `Day ${state.QuestCrawl.day} is over. It is ${turnorder.getCurrentCharacter().name}'s turn.`)
   }
 
   // log('updateTracker')
@@ -1128,6 +1198,7 @@ on('ready', () => {
   let placed = []
   let open = []
   let grid
+  let turnorder
   if (state.QuestCrawl.grid) {
     try {
       grid = Grid.fromJSON(state.QuestCrawl.grid)
@@ -1137,6 +1208,12 @@ on('ready', () => {
     state.QuestCrawl.endgame = false
   } else {
     grid = new Grid()
+  }
+
+  if (state.QuestCrawl.turnorder) {
+    turnorder = new TurnOrder(state.QuestCrawl.turnorder)
+  } else {
+    turnorder = new TurnOrder()
   }
 
   // log('getPageId')
@@ -1157,8 +1234,7 @@ on('ready', () => {
         height: 70,
         width: 70,
         pageid,
-        layer: 'objects',
-        controlledby: 'all'
+        layer: 'objects'
       })
     return new PartyToken(result)
   }
@@ -1328,7 +1404,7 @@ on('ready', () => {
           height: 70,
           width: 70,
           imgsrc: this.thumb || 'https://s3.amazonaws.com/files.d20.io/images/320602368/vZ9dXfIl0BUzNoXX9tI-ag/thumb.png?1672442009',
-          controllerby: this.player.id
+          controlledby: this.player.id
         })
       }
       return token
@@ -2017,6 +2093,9 @@ on('ready', () => {
         }
       })
       setupEndGame()
+      state.QuestCrawl.preventMove = () => {
+        sendChat('QuestCrawl', 'You have already moved this turn. []')
+      }
     })
   }
 
@@ -2760,7 +2839,6 @@ on('ready', () => {
         target = grid.get(getRandomOpenCard().getRandomNeighborCoords())
       }
       if ((gaps !== 0) && (i % gapSplit === 0) && open.length >= 1) {
-        log(`Placing gap card at ${target}`)
         const gap = new GapCard({ x: target.x, y: target.y })
         gap.place()
       } else {
@@ -2875,8 +2953,7 @@ on('ready', () => {
   function holyRodBonus (character, output) {
     if (character.items.indexOf('Holy Rod') !== -1) {
       const card = getCurrentCard()
-
-      const nearQuest = card.getAllNeighbors().some((c) => {
+      const nearQuest = card.name.indexOf('Queen') || card.getAllNeighbors().some((c) => {
         if (!c.faceup || c.id === 'Gap') {
           return false
         }
@@ -3022,7 +3099,7 @@ on('ready', () => {
     discardBrokenItems(character, who, outcome)
     if (challenge > outcome.result) {
       logEvent(character, `Became lost in the hardlands ${renderOutcome(outcome)}`)
-      state.QuestCrawl.preventMove = () => { sendChat('QuestCrawl', 'Your party is lost in the wilderness. [Resend Chat](!questcrawl --look)') }
+      state.QuestCrawl.preventMove = () => { sendChat('QuestCrawl', 'Your party is lost in the wilderness. [Look](!questcrawl --look)') }
       sendChat('QuestCrawl', `Your party has become lost in the hard lands, despite ${character.name}'s effort (${renderOutcome(outcome)}). End the turn and try again tomorrow.`)
       return
     }
@@ -3286,8 +3363,8 @@ on('ready', () => {
   }
 
   function getTurnOrder () {
-    Campaign().set('initiativepageid', Campaign().get('playerpageid'))
-    Campaign().set('turnorder', '')
+    state.QuestCrawl.turnorder = []
+    turnorder = new TurnOrder()
     getParty().forEach((character) => {
       sendChat('QuestCrawl', `/w ${character.who} [Roll for Initiative](!questcrawl --turnorder &#91;[1d6]&#93;)`)
     })
@@ -3295,16 +3372,32 @@ on('ready', () => {
 
   function turnOrder (character, args) {
     const params = getNumericParams(args, 1)
-    let turnorder = []
-    if (Campaign().get('turnorder') !== '') {
-      turnorder = JSON.parse(Campaign().get('turnorder'))
+    const allDone = getParty().every((character) => {
+      return turnorder.has(character)
+    })
+    if (allDone) {
+      if (turnOrder.hasTies()) {
+        turnOrder.removeTies()
+        sendChat('QuestCrawl', 'Ties detected, rerolling.')
+      }
+      turnorder.print()
     }
-    const token = character.getToken()
-    log(token)
-    turnorder.push({ id: token.get('_id'), pr: params.turnorder, custom: '', _pageid: token.get('pageid') })
-    turnorder.sort((a, b) => a.pr - b.pr)
-    log(turnorder)
-    Campaign().set('turnorder', JSON.stringify(turnorder))
+    if (!params.turnorder) {
+      return
+    }
+    if (turnorder.has(character)) {
+      sendChat('QuestCrawl', `/w ${character.who} You are already on the turn order.`)
+    } else {
+      log('setting again')
+      sendChat('QuestCrawl', `/w ${character.who} You rolled a [[${params.turnorder}]].`)
+      turnorder.add(character, params.turnorder)
+      state.QuestCrawl.turnorder = turnorder.toJSON()
+      turnOrder(character, [])
+    }
+  }
+
+  function whoseTurn (character, who) {
+    sendChat('QuestCrawl', `/w ${who} It is currently ${turnorder.getCurrentCharacter().name}'s turn.`)
   }
 
   on('chat:message', (msg) => {
@@ -3348,11 +3441,6 @@ on('ready', () => {
 
     if (args.find(n => /^getturnorder(\b|$)/i.test(n))) {
       getTurnOrder()
-      return
-    }
-
-    if (args.find(n => /^endturn(\b|$)/i.test(n))) {
-      endTurn()
       return
     }
 
@@ -3414,8 +3502,18 @@ on('ready', () => {
       character.die()
     }
 
+    if (args.find(n => /^whoseturn(\b|$)/i.test(n))) {
+      whoseTurn(character, who)
+      return
+    }
+
     if (character.isDead()) {
       return sendChat('QuestCrawl', `/w ${who} Be still mortal, ${character.name} has passed into the realm beyond.`)
+    }
+
+    if (args.find(n => /^endturn(\b|$)/i.test(n))) {
+      endTurn(character)
+      return
     }
 
     const params = getParams(args, 0)

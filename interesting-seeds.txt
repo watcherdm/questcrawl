@@ -1,0 +1,1 @@
+!questcrawl --beastie --suit clubs --challenge 8 --result 6|3 --source hero|suit --type faction
