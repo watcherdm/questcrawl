@@ -1,5 +1,3 @@
-'use strict'
-
 on('ready', () => {
   let rng = Math.random
   let cardSize = 70
@@ -731,7 +729,7 @@ on('ready', () => {
       this.internal.sort((a, b) => b.result - a.result)
     },
     getTies: function () {
-      this.internal.reduce((m, { result }) => {
+      return this.internal.filter(x => x).reduce((m, { result }) => {
         m[result] = m[result] || 0
         m[result]++
         return m
@@ -803,6 +801,7 @@ on('ready', () => {
     turnorder.nextTurn()
     state.QuestCrawl.turnorder = turnorder.toJSON()
     sendChat('QuestCrawl', `Day ${state.QuestCrawl.day} is over. It is ${turnorder.getCurrentCharacter().name}'s turn.`)
+    state.QuestCrawl.preventMove = null
   }
 
   // log('updateTracker')
@@ -2953,7 +2952,7 @@ on('ready', () => {
   function holyRodBonus (character, output) {
     if (character.items.indexOf('Holy Rod') !== -1) {
       const card = getCurrentCard()
-      const nearQuest = card.name.indexOf('Queen') || card.getAllNeighbors().some((c) => {
+      const nearQuest = (card.name.indexOf('Queen') !== -1) || card.getAllNeighbors().some((c) => {
         if (!c.faceup || c.id === 'Gap') {
           return false
         }
@@ -3260,6 +3259,7 @@ on('ready', () => {
       treasure: Math.max(character.treasure - params.cost, 0)
     })
     getPartyToken().hide()
+    state.QuestCrawl.preventMove = false
     getFarseeingToken().show().set({
       bar2_value: params.map,
       bar2_max: params.map,
@@ -3376,8 +3376,8 @@ on('ready', () => {
       return turnorder.has(character)
     })
     if (allDone) {
-      if (turnOrder.hasTies()) {
-        turnOrder.removeTies()
+      if (turnorder.hasTies()) {
+        turnorder.removeTies()
         sendChat('QuestCrawl', 'Ties detected, rerolling.')
       }
       turnorder.print()
@@ -3397,6 +3397,9 @@ on('ready', () => {
   }
 
   function whoseTurn (character, who) {
+    getPartyToken().set({
+      controlledby: turnorder.getCurrentCharacter().player.id
+    })
     sendChat('QuestCrawl', `/w ${who} It is currently ${turnorder.getCurrentCharacter().name}'s turn.`)
   }
 

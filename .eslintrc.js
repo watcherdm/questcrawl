@@ -1,7 +1,8 @@
 module.exports = {
   env: {
     browser: true,
-    es2021: true
+    es2021: true,
+    'jest/globals': true
   },
   extends: 'standard',
   overrides: [
@@ -9,11 +10,14 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest'
   },
+  plugins: ['jest'],
   rules: {
   },
   globals: {
+    global: true,
     on: true,
     sendChat: true,
+    sendError: true,
     log: true,
     setAttrs: true,
     state: true,
