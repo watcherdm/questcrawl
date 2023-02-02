@@ -36,14 +36,14 @@
     console.log(msg)
   }
 
-  function setAttrs (id, key, val) {
+  function setAttrs (_id, key, val) {
     if (val === undefined && typeof key === 'object') {
       Object.entries(key).forEach(([key, val]) => {
-        setAttrs(id, key, val)
+        setAttrs(_id, key, val)
       })
       return
     }
-    const obj = objectPool.find(({ _id }) => id === _id)
+    const obj = objectPool.find(({ id }) => id === _id)
     if (!obj) {
       return
     }
@@ -90,8 +90,13 @@
   function Campaign () {
     if (objectPool[0].type !== 'campaign') {
       objectPool.unshift(new Roll20Object('campaign', {
-        turnorder: null
+        turnorder: null,
+        playerpageid: 'valid-page-id'
       }))
+      createObj('page', {
+        _id: 'valid-page-id',
+        grid_type: 'square'
+      })
     }
     return objectPool[0]
   }
@@ -100,8 +105,11 @@
     const card = getObj('card', cardid)
     settings._id = card.id.replace('card', 'graphic')
     settings.cardid = cardid
-    const graphic = createObj('graphic', settings)
-    console.log(graphic)
+    const graphic = createObj('graphic', Object.assign(settings, {
+      currentSide: 1,
+      sides: 'first-side|second-side'
+    }))
+    return graphic
   }
 
   function cardInfo ({ type, deckid, cardid, discard = false }) {
@@ -127,12 +135,25 @@
     }
   }
 
-  function recallCards () {
+  function recallCards (deckid, type = 'all') {
     deck = new Deck('valid-deckid')
   }
 
-  function shuffleDeck () {
-    console.log('shuffleCards called')
+  function shuffleDeck (deckid, discard = true, deckOrder = []) {
+    if (discard) {
+      recallCards(deckid)
+    }
+    if (deckOrder.length === deck.cards.length) {
+      const orderedCards = []
+      deckOrder.forEach((cardid) => {
+        orderedCards.push(getObj('card', cardid))
+      })
+      deck.cards = orderedCards
+      return orderedCards.map(c => c.id)
+    }
+    deck.cards = deck.cards.sort(() => Math.random() > 0.5 ? 1 : -1)
+    console.log(deck.cards.map((card) => card.get('name')))
+    return deck.cards.map(c => c.id)
   }
 
   function onSheetWorkerCompleted () {
@@ -147,18 +168,25 @@
       ['Hearts', 'Clubs', 'Diamonds', 'Spades'].forEach((suit) => {
         const card = createObj('card', { _id: `-card-test-id-${i}`, name: `${face} of ${suit}`, deckid: id })
         this.cards.push(card)
+        createObj('handout', { _id: `-handout-test-id-${i}`, name: `${face} of ${suit}` })
         i++
       })
     });
     ['Red', 'Black'].forEach((color) => {
       const card = createObj('card', { _id: `-card-test-id-${i}`, name: `${color} Joker`, deckid: id })
       this.cards.push(card)
+      createObj('handout', { _id: `-handout-test-id-${i}`, name: `${color} Joker` })
       i++
     })
   }
 
   let deck = new Deck('valid-deckid')
-
+  createObj('deck', {
+    name: 'QuestCrawl'
+  })
+  createObj('deck', {
+    name: 'QuestCrawlHex'
+  })
   function drawCard (deckid) {
     if (deckid === 'valid-deckid') {
       return deck.cards.shift().id

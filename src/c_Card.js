@@ -62,6 +62,9 @@
 
   QuestCrawlCard.prototype = {
     getCoordString: function () { return `${this.x.toFixed(1)},${this.y.toFixed(1)}` },
+    getRandomNeighbor: function () {
+      return global.grid.get(this.getRandomNeighborCoords())
+    },
     getRandomNeighborCoords: function () {
       let { x, y } = this
       const n = this.neighbors[Math.floor(global.rng() * (this.neighbors.length - 1))]
@@ -78,7 +81,7 @@
     getAllNeighbors: function () {
       const { x, y } = this
       return this.neighbors.map((n) => {
-        return grid.get({ x: x + n.x, y: y + n.y })
+        return global.grid.get({ x: x + n.x, y: y + n.y })
       })
     },
     place: function (faceup = false) {
@@ -133,7 +136,7 @@
       const side = this.faceup ? 0 : 1
       this.getGraphic().set({
         currentSide: side,
-        imgsrc: decodeURIComponent(getThumb(this.getGraphic().get('sides').split('|')[side]))
+        imgsrc: decodeURIComponent(global.getThumb(this.getGraphic().get('sides').split('|')[side]))
       })
 
       const name = this.name
@@ -248,7 +251,7 @@
     getAllNeighbors: function () {
       const { x, y } = this
       return this.neighbors.map((n) => {
-        return grid.get({ x: x + n.x, y: y + n.y })
+        return global.grid.get({ x: x + n.x, y: y + n.y })
       })
     },
     flip: function () {},

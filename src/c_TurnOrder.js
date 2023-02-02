@@ -183,6 +183,7 @@
 
   global.TurnOrder = TurnOrder
   global.endTurn = endTurn
+  global.updateTracker = updateTracker
 
   if (module) {
     module.exports = global

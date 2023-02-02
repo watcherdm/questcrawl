@@ -8,6 +8,7 @@
   sendError,
   findObjs,
   sendChat,
+  shuffleDeck,
   getObj,
   Campaign,
   randomInteger,
@@ -78,7 +79,7 @@
   }
 
   function getMoveHistory () {
-    return state.QuestCrawl.history.filter(x => x.type !== 'map')
+    return global.state.QuestCrawl.history.filter(x => x.type !== 'map')
   }
 
   function getLastLogEntry (move = true) {
@@ -181,6 +182,7 @@
     // checkForOrbOfChaos(c, commands)
     return commands.join(' ')
   }
+
   function setupEndGame () {
     if (checkEndGame() && !state.QuestCrawl.endgame) {
       const partyMessage = getLiveParty().map((character) => {
@@ -234,7 +236,7 @@
     }
     let name = card.name
     logEntry.name = name
-    if (name.indexOf('Queen') === 0) {
+    if (name?.indexOf('Queen') === 0) {
       if (!checkQuestInParty(card)) {
         card.makeBlank()
       }
@@ -271,6 +273,8 @@
       if (mode === 'hexagon') {
         screenPos = toScreenHex(lastPos, card.cardSize)
       }
+      log(screenPos)
+      log(obj)
       obj.set(screenPos)
       state.QuestCrawl.preventMove()
       return
@@ -279,7 +283,7 @@
       card.flip()
     }
     state.QuestCrawl.history.push(logEntry)
-    chatCard(card, logEntry, name).then((title) => {
+    global.chatCard(card, logEntry, name).then((title) => {
       logPartyEvent(title)
       state.QuestCrawl.currentMagicItem = null
       getLiveParty().forEach((character) => {
@@ -352,6 +356,120 @@
     }
   }
 
+  function changeMode (mode = 'original') {
+    state.QuestCrawl.config.mode = mode
+    const page = getObj('page', Campaign().get('playerpageid'))
+    page.set({
+      grid_type: mode === 'original' ? 'square' : 'hex'
+    }, { silent: true })
+    const otherDeck = findObjs({ type: 'deck', name: (mode === 'original' ? 'QuestCrawlHex' : 'QuestCrawl') })[0]
+
+    state.QuestCrawl.config.deck = (mode === 'original' ? 'QuestCrawl' : 'QuestCrawlHex')
+    const currentDeck = findObjs({ type: 'deck', name: state.QuestCrawl.config.deck })[0]
+    state.QuestCrawl.config.deckid = currentDeck.id
+
+    currentDeck.set({
+      shown: true
+    })
+    otherDeck.set({
+      shown: false
+    })
+  }
+
+  function detectPageGrid () {
+    const gridType = getObj('page', getPageId()).get('grid_type')
+    if (gridType === 'square') {
+      log('setting mode original')
+      changeMode('original')
+    } else if (gridType === 'hex') {
+      log('setting mode hexagon')
+      changeMode('hexagon')
+    }
+  }
+  function resetConfig () {
+    log('resetting config')
+    if (!state.QuestCrawl) {
+      state.QuestCrawl = {
+        version: 2.1,
+        config: {
+          mode: 'original'
+        },
+        currentState: 0,
+        currentChampion: null,
+        grid: [],
+        gaps: 0,
+        day: 0,
+        players: {},
+        characters: [],
+        count: 0,
+        factions: {},
+        history: []
+      }
+    }
+    if (Array.isArray(state.QuestCrawl.players)) {
+      state.QuestCrawl.players = {}
+    }
+    if (!state.QuestCrawl.factions) {
+      state.QuestCrawl.factions = {}
+    }
+    if (!state.QuestCrawl.history) {
+      state.QuestCrawl.history = [{ x: 0, y: 0, name: 'Red Joker', day: 0, events: [] }]
+    }
+    if (!state.QuestCrawl.mapHistory) {
+      state.QuestCrawl.mapHistory = []
+    }
+    if (!state.QuestCrawl.mountains) {
+      state.QuestCrawl.mountains = {}
+    }
+    if (!state.QuestCrawl.artifacts) {
+      state.QuestCrawl.artifacts = {}
+    }
+    if (!state.QuestCrawl.megabeasts) {
+      state.QuestCrawl.megabeasts = {}
+    }
+    state.QuestCrawl.currentChampion = null
+    detectPageGrid()
+  }
+
+  function resetBoard (deckid, resetHistory = true) {
+    return new Promise((resolve, reject) => {
+      findObjs({ type: 'graphic', layer: 'gmlayer' }).forEach(obj => obj.remove())
+      setTimeout(() => {
+        recallCards(deckid)
+        setTimeout(() => {
+          shuffleDeck(deckid)
+          setTimeout(() => {
+            recallCards(deckid)
+            setTimeout(() => {
+              const { state } = global
+              shuffleDeck(deckid)
+              global.grid = new Grid()
+              global.placed = []
+              global.open = []
+              if (resetHistory) {
+                state.QuestCrawl.day = 0
+                state.QuestCrawl.history = [{ x: 0, y: 0, name: 'Red Joker', day: 0 }]
+              }
+              state.QuestCrawl.evil = 0
+              state.QuestCrawl.preventMove = false
+              state.QuestCrawl.mapHistory = []
+              state.QuestCrawl.mountains = {}
+              state.QuestCrawl.spells = {}
+              state.QuestCrawl.megabeasts = {}
+              state.QuestCrawl.vault = false
+              state.QuestCrawl.motorhead = false
+              delete state.QuestCrawl.factions
+              state.QuestCrawl.farSightRemaining = 0
+              global.updateTracker()
+              global.resetConfig()
+              resolve(state.QuestCrawl)
+            }, 100)
+          }, 100)
+        }, 100)
+      }, 100)
+    })
+  }
+
   function resetRng (seed) {
     if (seed) {
       if (state.QuestCrawl.config.seed) {
@@ -370,7 +488,7 @@
   }
 
   function init (state) {
-    resetRng()
+    resetRng(state.QuestCrawl.seed)
     if (state.QuestCrawl.grid) {
       try {
         global.grid = Grid.fromJSON(state.QuestCrawl.grid)
@@ -388,6 +506,10 @@
     }
     global.open = []
     global.placed = []
+  }
+
+  function getPageId () {
+    return Campaign().get('playerpageid')
   }
   function getParams (args, offset) {
     return args.slice(offset).reduce((m, x) => {
@@ -426,6 +548,54 @@
     return global.open[Math.floor(global.rng() * (global.open.length - 1))]
   }
 
+  function getCurrentCard (logEntry = getLastLogEntry()) {
+    return global.grid.get(logEntry)
+  }
+
+  function look () {
+    const logEntry = getLastLogEntry()
+    const card = getCurrentCard()
+    const name = (logEntry.asName || logEntry.name)
+    chatCard(card, logEntry, name).then((title) => {
+      getLiveParty().forEach(character => {
+        const commands = characterCommands(character)
+        if (commands.length > 0) {
+          sendChat('QuestCrawl', `/w ${character.who} ${commands}`)
+        }
+      })
+    })
+  }
+
+  function selectCharacter (player) {
+    const controlledCharacters = filterObjs((c) => {
+      return c.get('controlledby') === player.id &&
+                c.get('type') === 'character' &&
+                getAttrByName(c.id, 'mode') !== 'graveyard'
+    }).map(character => new global.Character(character.id, player))
+    const who = player.get('displayname')
+    const partyToken = global.getPartyToken()
+    if (controlledCharacters.length === 0) {
+      sendChat('QuestCrawl', `/w ${who} [Create A Character](!questcrawl --create)`)
+    } else {
+      sendChat('QuestCrawl', `/w ${who} <h3>Confirm Your Character</h3><p>Your current characters:</p>`)
+      controlledCharacters.forEach(x => {
+        sendChat('QuestCrawl', `/w ${who} <p><img src="${x.thumb || partyToken.get('imgsrc')}" style="width: 70px; height: 70px; float: left;"/><b style="font-size: 1.2em;">[${x.name}](http://journal.roll20.net/character/${x.id}) ${x.mode}</b> (you can click this link to access the character sheet for editing.)</p> [Play ${x._name}](!questcrawl --confirm --player ${player.id} --character ${x.id})`)
+      })
+      sendChat('QuestCrawl', `/w ${who} or [Create A new Character](!questcrawl --create)`)
+    }
+  }
+
+  function start () {
+    const players = getOnlinePlayers()
+    state.QuestCrawl.config.commands = 1
+    const lastEntry = getMoveHistory().slice(-1)[0]
+    global.getPartyToken().move(lastEntry)
+    look()
+    setTimeout(() => {
+      players.forEach(selectCharacter)
+    }, 1000)
+  }
+
   function generateIsland (deckid, args) {
     if (global.grid.get({ x: 0, y: 0 }).cardid) {
       return
@@ -436,6 +606,8 @@
 
     if (params.static) {
       shuffleDeck(deckid, true, getCardsFromDeck(deckid))
+    } else {
+      shuffleDeck(deckid, true)
     }
 
     const startingTown = findObjs({ type: 'card', deckid, name: 'Red Joker' })[0]
@@ -489,14 +661,21 @@
     state.QuestCrawl.grid = global.grid.toJSON().map(c => c && c.toJSON())
   }
 
+  global.chatCard = chatCard
   global.toScreenGrid = toScreenGrid
   global.toScreenHex = toScreenHex
+  global.getThumb = getThumb
   global.getParams = getParams
+  global.getPageId = getPageId
   global.getNumericParams = getNumericParams
+  global.getMoveHistory = getMoveHistory
   global.onPartyMoved = onPartyMoved
   global.generateIsland = generateIsland
   global.init = init
-
+  global.resetBoard = resetBoard
+  global.resetConfig = resetConfig
+  global.start = start
+  global.resetRng = resetRng
   if (module) {
     module.exports = global
   }
