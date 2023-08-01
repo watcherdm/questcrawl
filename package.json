@@ -17,7 +17,7 @@
     "watcherdm"
   ],
   "author": "Gabriel Hernandez <gabriel@watcherdm.com>",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/watcherdm/questcrawl/issues"
   },
