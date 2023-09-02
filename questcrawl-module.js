@@ -3338,13 +3338,16 @@ on('ready', () => {
     state.QuestCrawl.config.deck = (mode === 'original' ? 'QuestCrawl' : 'QuestCrawlHex')
     const currentDeck = findObjs({ type: 'deck', name: state.QuestCrawl.config.deck })[0]
     state.QuestCrawl.config.deckid = currentDeck.id
-
-    currentDeck.set({
-      shown: true
-    })
-    otherDeck.set({
-      shown: false
-    })
+    try {
+      currentDeck.set({
+        shown: true
+      })
+      otherDeck.set({
+        shown: false
+      })
+    } catch(e) {
+      console.error("issue with deck")
+    } 
   }
 
   function sell (character, who, args) {
